@@ -91,8 +91,8 @@ export function renderLine1(
   }
 
   // Style
-  if (display.style && input.output_style?.name && input.output_style.name !== 'default') {
-    right.push(c.dim(input.output_style.name));
+  if (display.style && input.output_style?.name) {
+    right.push(c.gray(input.output_style.name));
   }
 
   // Version
