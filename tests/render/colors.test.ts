@@ -11,10 +11,9 @@ describe('stripAnsi', () => {
 });
 
 describe('detectColorMode', () => {
-  afterEach(() => { vi.unstubAllEnvs(); });
-  it('detects truecolor from COLORTERM', () => { vi.stubEnv('COLORTERM', 'truecolor'); expect(detectColorMode()).toBe('truecolor'); });
-  it('detects 256 from TERM', () => { vi.stubEnv('COLORTERM', ''); vi.stubEnv('TERM', 'xterm-256color'); expect(detectColorMode()).toBe('256'); });
-  it('falls back to named', () => { vi.stubEnv('COLORTERM', ''); vi.stubEnv('TERM', 'dumb'); expect(detectColorMode()).toBe('named'); });
+  it('always returns named by default (respects terminal theme)', () => {
+    expect(detectColorMode()).toBe('named');
+  });
 });
 
 describe('createColors', () => {

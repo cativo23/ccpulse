@@ -20,31 +20,35 @@ export interface Colors {
 export function createColors(mode: ColorMode): Colors {
   const wrap = (code: string) => (s: string) => `${code}${s}${RST}`;
 
-  if (mode === 'truecolor') {
-    return {
-      cyan: wrap('\x1b[38;2;0;255;255m'), magenta: wrap('\x1b[38;2;255;0;255m'),
-      yellow: wrap('\x1b[38;2;255;255;0m'), green: wrap('\x1b[38;2;0;255;0m'),
-      orange: wrap('\x1b[38;2;255;165;0m'), red: wrap('\x1b[31m'),
-      blinkRed: wrap('\x1b[5;31m'), gray: wrap('\x1b[90m'),
-      brightBlue: wrap('\x1b[38;2;100;149;237m'), dim: wrap('\x1b[2m'), bold: wrap('\x1b[1m'),
-    };
-  }
-  if (mode === '256') {
-    return {
-      cyan: wrap('\x1b[38;5;51m'), magenta: wrap('\x1b[38;5;201m'),
-      yellow: wrap('\x1b[38;5;226m'), green: wrap('\x1b[38;5;46m'),
-      orange: wrap('\x1b[38;5;208m'), red: wrap('\x1b[31m'),
-      blinkRed: wrap('\x1b[5;31m'), gray: wrap('\x1b[90m'),
-      brightBlue: wrap('\x1b[38;5;111m'), dim: wrap('\x1b[2m'), bold: wrap('\x1b[1m'),
-    };
-  }
-  return {
+  // Named ANSI colors as default — respects terminal theme (like the original JS).
+  // Only orange uses 256-color (no named ANSI equivalent).
+  // Truecolor/256 modes available for users who override via config.
+  const named: Colors = {
     cyan: wrap('\x1b[36m'), magenta: wrap('\x1b[35m'),
     yellow: wrap('\x1b[33m'), green: wrap('\x1b[32m'),
     orange: wrap('\x1b[38;5;208m'), red: wrap('\x1b[31m'),
     blinkRed: wrap('\x1b[5;31m'), gray: wrap('\x1b[90m'),
     brightBlue: wrap('\x1b[94m'), dim: wrap('\x1b[2m'), bold: wrap('\x1b[1m'),
   };
+
+  if (mode === 'truecolor') {
+    return {
+      ...named,
+      cyan: wrap('\x1b[38;2;0;255;255m'), magenta: wrap('\x1b[38;2;255;0;255m'),
+      yellow: wrap('\x1b[38;2;255;255;0m'), green: wrap('\x1b[38;2;0;255;0m'),
+      orange: wrap('\x1b[38;2;255;165;0m'),
+      brightBlue: wrap('\x1b[38;2;100;149;237m'),
+    };
+  }
+  if (mode === '256') {
+    return {
+      ...named,
+      cyan: wrap('\x1b[38;5;51m'), magenta: wrap('\x1b[38;5;201m'),
+      yellow: wrap('\x1b[38;5;226m'), green: wrap('\x1b[38;5;46m'),
+      brightBlue: wrap('\x1b[38;5;111m'),
+    };
+  }
+  return named;
 }
 
 export function stripAnsi(str: string): string {
@@ -52,10 +56,8 @@ export function stripAnsi(str: string): string {
 }
 
 export function detectColorMode(): ColorMode {
-  const colorterm = process.env['COLORTERM'] ?? '';
-  if (colorterm === 'truecolor' || colorterm === '24bit') return 'truecolor';
-  const term = process.env['TERM'] ?? '';
-  if (term.includes('256color')) return '256';
+  // Default to named ANSI — respects terminal theme colors.
+  // Only upgrade if user explicitly sets colors.mode in config.
   return 'named';
 }
 
