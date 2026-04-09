@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, copyFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { createInterface } from 'node:readline';
@@ -89,5 +89,37 @@ export async function install(opts: InstallerOptions = {}): Promise<string> {
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', { mode: 0o600 });
   lines.push(ok('Configured lumira as statusline'));
   lines.push(`\n  Restart Claude Code to see your statusline.\n`);
+  return lines.join('\n') + '\n';
+}
+
+// ── Uninstall ───────────────────────────────────────────────────────
+export function uninstall(opts: InstallerOptions = {}): string {
+  const settingsPath = opts.settingsPath ?? defaultSettingsPath();
+  const backupPath = settingsPath + '.lumira.bak';
+  const lines: string[] = [header()];
+
+  if (!existsSync(settingsPath)) {
+    lines.push(ok('Nothing to uninstall — no settings.json found'));
+    return lines.join('\n') + '\n';
+  }
+
+  if (existsSync(backupPath)) {
+    copyFileSync(backupPath, settingsPath);
+    unlinkSync(backupPath);
+    lines.push(ok('Restored previous settings from backup'));
+    lines.push(`\n  Restart Claude Code to apply changes.\n`);
+    return lines.join('\n') + '\n';
+  }
+
+  try {
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    delete settings.statusLine;
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', { mode: 0o600 });
+    lines.push(ok('Removed lumira statusline from settings'));
+  } catch {
+    lines.push(warn('Could not parse settings.json'));
+  }
+
+  lines.push(`\n  Restart Claude Code to apply changes.\n`);
   return lines.join('\n') + '\n';
 }

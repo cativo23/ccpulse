@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { install } from '../src/installer.js';
+import { install, uninstall } from '../src/installer.js';
 
 describe('install', () => {
   let dir: string;
@@ -78,5 +78,45 @@ describe('install', () => {
     const data = JSON.parse(readFileSync(nestedSettingsPath, 'utf8'));
     expect(data.statusLine.command).toBe('npx lumira@latest');
     expect(output).toContain('Configured');
+  });
+});
+
+describe('uninstall', () => {
+  let dir: string;
+  let settingsPath: string;
+  let backupPath: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'lumira-test-'));
+    settingsPath = join(dir, 'settings.json');
+    backupPath = join(dir, 'settings.json.lumira.bak');
+  });
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+
+  it('restores from backup when backup exists', () => {
+    const backup = { statusLine: { type: 'command', command: 'old-tool', padding: 0 }, hooks: {} };
+    const current = { statusLine: { type: 'command', command: 'npx lumira@latest', padding: 0 }, hooks: {} };
+    writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+    writeFileSync(settingsPath, JSON.stringify(current, null, 2));
+    const output = uninstall({ settingsPath });
+    const data = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    expect(data.statusLine.command).toBe('old-tool');
+    expect(existsSync(backupPath)).toBe(false);
+    expect(output).toContain('Restored');
+  });
+
+  it('removes statusLine key when no backup exists', () => {
+    const current = { statusLine: { type: 'command', command: 'npx lumira@latest', padding: 0 }, hooks: {} };
+    writeFileSync(settingsPath, JSON.stringify(current, null, 2));
+    const output = uninstall({ settingsPath });
+    const data = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    expect(data.statusLine).toBeUndefined();
+    expect(data.hooks).toEqual({});
+    expect(output).toContain('Removed');
+  });
+
+  it('prints message when no settings file exists', () => {
+    const output = uninstall({ settingsPath });
+    expect(output).toContain('Nothing to uninstall');
   });
 });
