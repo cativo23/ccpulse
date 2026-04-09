@@ -1,4 +1,4 @@
-# ccpulse
+# lumira
 
 Real-time statusline plugin for [Claude Code](https://code.claude.com).
 
@@ -24,14 +24,14 @@ Real-time statusline plugin for [Claude Code](https://code.claude.com).
 ## Install
 
 ```bash
-npm install -g ccpulse
+npm install -g lumira
 ```
 
 Or clone and build:
 
 ```bash
-git clone https://github.com/cativo23/ccpulse.git
-cd ccpulse
+git clone https://github.com/cativo23/lumira.git
+cd lumira
 npm install
 npm run build
 ```
@@ -44,7 +44,7 @@ Add to `~/.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "ccpulse",
+    "command": "lumira",
     "padding": 0
   }
 }
@@ -80,7 +80,7 @@ my-project |  main | Opus 4.6 | ████░░░░░░░░░░░░
 
 ## Configuration
 
-Create `~/.config/ccpulse/config.json`:
+Create `~/.config/lumira/config.json`:
 
 ```json
 {
@@ -121,8 +121,8 @@ All fields are optional — defaults are shown above.
 ### CLI Flags
 
 ```bash
-ccpulse --minimal    # Force minimal mode
-ccpulse --gsd        # Enable GSD integration
+lumira --minimal    # Force minimal mode
+lumira --gsd        # Enable GSD integration
 ```
 
 ## Architecture
