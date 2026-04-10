@@ -9,6 +9,7 @@ import { getGsdInfo } from './parsers/gsd.js';
 import { getTermCols, getLayoutCols } from './utils/terminal.js';
 import { loadConfig, mergeCliFlags } from './config.js';
 import { render } from './render/index.js';
+import { install, uninstall } from './installer.js';
 import type { Dependencies, RenderContext } from './types.js';
 import { EMPTY_TRANSCRIPT } from './types.js';
 
@@ -46,5 +47,13 @@ export async function main(overrides: Partial<Dependencies> = {}): Promise<strin
 // Run when invoked directly
 const __filename = fileURLToPath(import.meta.url);
 if (process.argv[1] && (__filename === process.argv[1] || __filename === process.argv[1] + '.js')) {
-  main().then(o => process.stdout.write(o)).catch(e => { if (!(e instanceof SyntaxError)) process.stderr.write(`Statusline error: ${e.message}\n`); });
+  const cmd = process.argv[2];
+  if (cmd === 'install') {
+    install().then(o => process.stdout.write(o)).catch(e => process.stderr.write(`Install error: ${e.message}\n`));
+  } else if (cmd === 'uninstall') {
+    const o = uninstall();
+    process.stdout.write(o);
+  } else {
+    main().then(o => process.stdout.write(o)).catch(e => { if (!(e instanceof SyntaxError)) process.stderr.write(`Statusline error: ${e.message}\n`); });
+  }
 }
