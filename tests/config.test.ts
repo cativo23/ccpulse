@@ -13,9 +13,9 @@ describe('loadConfig', () => {
   it('returns defaults when no config', () => { expect(loadConfig(join(dir, 'nope'))).toEqual(DEFAULT_CONFIG); });
   it('merges partial config', () => {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'config.json'), '{"layout":"minimal","display":{"model":false}}');
+    writeFileSync(join(dir, 'config.json'), '{"layout":"singleline","display":{"model":false}}');
     const c = loadConfig(dir);
-    expect(c.layout).toBe('minimal');
+    expect(c.layout).toBe('singleline');
     expect(c.display.model).toBe(false);
     expect(c.display.branch).toBe(true);
   });
@@ -54,17 +54,17 @@ describe('mergeCliFlags', () => {
   it('--minimal sets preset and layout', () => {
     const r = mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--minimal']);
     expect(r.preset).toBe('minimal');
-    expect(r.layout).toBe('minimal');
+    expect(r.layout).toBe('singleline');
   });
   it('--balanced sets preset and layout=auto', () => {
     const r = mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--balanced']);
     expect(r.preset).toBe('balanced');
     expect(r.layout).toBe('auto');
   });
-  it('--full sets preset and layout=full', () => {
+  it('--full sets preset and layout=multiline', () => {
     const r = mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--full']);
     expect(r.preset).toBe('full');
-    expect(r.layout).toBe('full');
+    expect(r.layout).toBe('multiline');
   });
   it('enables gsd', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--gsd']).gsd).toBe(true); });
   it('no flags = unchanged', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i'])).toEqual(DEFAULT_CONFIG); });
@@ -76,7 +76,7 @@ describe('mergeCliFlags', () => {
   it('--preset=minimal drives layout', () => {
     const r = mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--preset=minimal']);
     expect(r.preset).toBe('minimal');
-    expect(r.layout).toBe('minimal');
+    expect(r.layout).toBe('singleline');
   });
   it('parses --icons=none', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--icons=none']).icons).toBe('none'); });
 });

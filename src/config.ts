@@ -13,7 +13,7 @@ export function loadConfig(configDir: string = join(homedir(), '.config', 'lumir
 }
 
 function mergeConfig(raw: Record<string, unknown>): HudConfig {
-  const layout = (['full', 'minimal', 'auto'] as const).includes(raw.layout as never) ? raw.layout as HudConfig['layout'] : DEFAULT_CONFIG.layout;
+  const layout = (['multiline', 'singleline', 'auto'] as const).includes(raw.layout as never) ? raw.layout as HudConfig['layout'] : DEFAULT_CONFIG.layout;
   const display = { ...DEFAULT_DISPLAY };
   if (raw.display && typeof raw.display === 'object') {
     for (const k of Object.keys(DEFAULT_DISPLAY) as (keyof DisplayToggles)[]) {
@@ -35,9 +35,9 @@ function mergeConfig(raw: Record<string, unknown>): HudConfig {
 }
 
 const PRESET_TO_LAYOUT: Record<string, HudConfig['layout']> = {
-  full: 'full',
+  full: 'multiline',
   balanced: 'auto',
-  minimal: 'minimal',
+  minimal: 'singleline',
 };
 
 function applyPreset(r: HudConfig, preset: NonNullable<HudConfig['preset']>): void {

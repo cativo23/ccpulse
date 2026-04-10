@@ -34,7 +34,7 @@ describe('main', () => {
       getMemoryInfo: () => null,
       getGsdInfo: () => null,
       getTermCols: () => 120,
-      loadConfig: () => ({ ...DEFAULT_CONFIG, layout: 'minimal', display: { ...DEFAULT_DISPLAY } }),
+      loadConfig: () => ({ ...DEFAULT_CONFIG, layout: 'singleline', display: { ...DEFAULT_DISPLAY } }),
     });
     // Minimal layout produces at most 2 lines (main + optional tools/todos)
     expect(output.split('\n').length).toBeLessThanOrEqual(2);

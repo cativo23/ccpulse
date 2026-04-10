@@ -127,10 +127,21 @@ export interface RenderContext {
 // ── Config ──────────────────────────────────────────────────────────
 
 export interface HudConfig {
-  layout: 'full' | 'minimal' | 'auto';
+  /**
+   * Internal render mode — controls which renderer is used.
+   * Derived from `preset` via applyPreset(). Users should set `preset` instead.
+   *   multiline  → full multi-line renderer (line1+line2+line3+line4)
+   *   singleline → compact single-line renderer
+   *   auto       → pick based on terminal width (<70 cols → singleline)
+   */
+  layout: 'multiline' | 'singleline' | 'auto';
   gsd: boolean;
   display: DisplayToggles;
   colors: ColorConfig;
+  /**
+   * User-facing preset — drives layout + display toggles (Phase 3).
+   * CLI: --full | --balanced | --minimal | --preset=<value>
+   */
   preset?: 'full' | 'balanced' | 'minimal';
   theme?: string;
   icons?: 'nerd' | 'emoji' | 'none';

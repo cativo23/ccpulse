@@ -10,7 +10,7 @@ export function render(ctx: RenderContext): string {
   const colorMode: ColorMode = ctx.config.colors.mode === 'auto' ? detectColorMode() : ctx.config.colors.mode;
   const c = createColors(colorMode);
 
-  if (ctx.config.layout === 'minimal' || (ctx.config.layout === 'auto' && ctx.cols < 70)) {
+  if (ctx.config.layout === 'singleline' || (ctx.config.layout === 'auto' && ctx.cols < 70)) {
     return renderMinimal(ctx, c);
   }
 

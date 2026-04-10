@@ -8,6 +8,6 @@ function makeCtx(ov: Partial<RenderContext> = {}): RenderContext {
 
 describe('render', () => {
   it('multi-line at 120 cols', () => { expect(render(makeCtx()).split('\n').length).toBeGreaterThanOrEqual(2); });
-  it('minimal when forced', () => { expect(render(makeCtx({ config: { ...DEFAULT_CONFIG, layout: 'minimal' } })).split('\n').length).toBeLessThanOrEqual(2); });
+  it('singleline when forced', () => { expect(render(makeCtx({ config: { ...DEFAULT_CONFIG, layout: 'singleline' } })).split('\n').length).toBeLessThanOrEqual(2); });
   it('auto-minimal at <70 cols', () => { expect(render(makeCtx({ cols: 60 })).split('\n').length).toBeLessThanOrEqual(2); });
 });
