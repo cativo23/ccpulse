@@ -19,10 +19,42 @@ describe('loadConfig', () => {
     expect(c.display.model).toBe(false);
     expect(c.display.branch).toBe(true);
   });
+
+  it('parses preset from config', () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), '{"preset":"balanced"}');
+    expect(loadConfig(dir).preset).toBe('balanced');
+  });
+  it('ignores invalid preset', () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), '{"preset":"fancy"}');
+    expect(loadConfig(dir).preset).toBeUndefined();
+  });
+  it('parses theme string', () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), '{"theme":"catppuccin"}');
+    expect(loadConfig(dir).theme).toBe('catppuccin');
+  });
+  it('parses valid icons value', () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), '{"icons":"emoji"}');
+    expect(loadConfig(dir).icons).toBe('emoji');
+  });
+  it('ignores invalid icons value', () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), '{"icons":"sparkles"}');
+    expect(loadConfig(dir).icons).toBeUndefined();
+  });
+  it('includes contextTokens in display defaults', () => {
+    expect(loadConfig(join(dir, 'nope')).display.contextTokens).toBe(true);
+  });
 });
 
 describe('mergeCliFlags', () => {
   it('overrides layout to minimal', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--minimal']).layout).toBe('minimal'); });
   it('enables gsd', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--gsd']).gsd).toBe(true); });
   it('no flags = unchanged', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i'])).toEqual(DEFAULT_CONFIG); });
+  it('parses --preset=balanced', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--preset=balanced']).preset).toBe('balanced'); });
+  it('parses --preset=minimal', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--preset=minimal']).preset).toBe('minimal'); });
+  it('parses --icons=none', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--icons=none']).icons).toBe('none'); });
 });

@@ -131,6 +131,9 @@ export interface HudConfig {
   gsd: boolean;
   display: DisplayToggles;
   colors: ColorConfig;
+  preset?: 'full' | 'balanced' | 'minimal';
+  theme?: string;
+  icons?: 'nerd' | 'emoji' | 'none';
 }
 
 export interface DisplayToggles {
@@ -139,6 +142,7 @@ export interface DisplayToggles {
   gitChanges: boolean;
   directory: boolean;
   contextBar: boolean;
+  contextTokens: boolean;
   tokens: boolean;
   cost: boolean;
   burnRate: boolean;
@@ -168,6 +172,7 @@ export const DEFAULT_DISPLAY: DisplayToggles = {
   gitChanges: true,
   directory: true,
   contextBar: true,
+  contextTokens: true,
   tokens: true,
   cost: true,
   burnRate: true,

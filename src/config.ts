@@ -25,12 +25,24 @@ function mergeConfig(raw: Record<string, unknown>): HudConfig {
     const m = (raw.colors as Record<string, unknown>).mode;
     if (['auto', 'named', '256', 'truecolor'].includes(m as string)) colors.mode = m as ColorConfig['mode'];
   }
-  return { layout, gsd: typeof raw.gsd === 'boolean' ? raw.gsd : DEFAULT_CONFIG.gsd, display, colors };
+  const result: HudConfig = { layout, gsd: typeof raw.gsd === 'boolean' ? raw.gsd : DEFAULT_CONFIG.gsd, display, colors };
+  const validPresets = ['full', 'balanced', 'minimal'] as const;
+  if (validPresets.includes(raw.preset as never)) result.preset = raw.preset as HudConfig['preset'];
+  if (typeof raw.theme === 'string' && raw.theme.length > 0) result.theme = raw.theme;
+  const validIcons = ['nerd', 'emoji', 'none'] as const;
+  if (validIcons.includes(raw.icons as never)) result.icons = raw.icons as HudConfig['icons'];
+  return result;
 }
 
 export function mergeCliFlags(config: HudConfig, argv: string[]): HudConfig {
   const r = { ...config, display: { ...config.display }, colors: { ...config.colors } };
   if (argv.includes('--minimal')) r.layout = 'minimal';
   if (argv.includes('--gsd')) r.gsd = true;
+  for (const arg of argv) {
+    const presetMatch = arg.match(/^--preset[= ]?(full|balanced|minimal)$/);
+    if (presetMatch) { r.preset = presetMatch[1] as HudConfig['preset']; continue; }
+    const iconsMatch = arg.match(/^--icons[= ]?(nerd|emoji|none)$/);
+    if (iconsMatch) { r.icons = iconsMatch[1] as HudConfig['icons']; continue; }
+  }
   return r;
 }
