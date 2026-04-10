@@ -64,6 +64,7 @@ const PRESET_DEFS: Record<NonNullable<HudConfig['preset']>, PresetDef> = {
       version: false,
       memory: false,
       contextTokens: false,
+      cacheMetrics: false,
     },
   },
   minimal: {
@@ -86,6 +87,8 @@ const PRESET_DEFS: Record<NonNullable<HudConfig['preset']>, PresetDef> = {
       linesChanged: false,
       memory: false,
       contextTokens: false,
+      cacheMetrics: false,
+      mcp: false,
     },
   },
 };

@@ -6,6 +6,7 @@ import { parseTranscript } from './parsers/transcript.js';
 import { getTokenSpeed } from './parsers/token-speed.js';
 import { getMemoryInfo } from './parsers/memory.js';
 import { getGsdInfo } from './parsers/gsd.js';
+import { getMcpInfo } from './parsers/mcp.js';
 import { getTermCols, getLayoutCols } from './utils/terminal.js';
 import { loadConfig, mergeCliFlags } from './config.js';
 import { render } from './render/index.js';
@@ -21,6 +22,7 @@ const defaultDeps: Dependencies = {
   getTokenSpeed: (ctx) => getTokenSpeed(ctx),
   getMemoryInfo: () => getMemoryInfo(),
   getGsdInfo: (session) => getGsdInfo(session),
+  getMcpInfo: (cwd) => getMcpInfo(cwd),
   getTermCols: () => getTermCols(),
 };
 
@@ -39,12 +41,13 @@ export async function main(overrides: Partial<Dependencies> = {}): Promise<strin
   const tokenSpeed = deps.getTokenSpeed(input.context_window);
   const memory = deps.getMemoryInfo();
   const gsd = config.gsd ? deps.getGsdInfo(input.session_id) : null;
+  const mcp = deps.getMcpInfo(cwd);
 
   const rawCols = deps.getTermCols();
   const isTTY = !!(process.stdout.columns || process.stderr.columns);
   const cols = getLayoutCols(rawCols, isTTY);
   const icons = resolveIcons(config.icons);
-  return render({ input, git, transcript, tokenSpeed, memory, gsd, cols, config, icons });
+  return render({ input, git, transcript, tokenSpeed, memory, gsd, mcp, cols, config, icons });
 }
 
 // Run when invoked directly

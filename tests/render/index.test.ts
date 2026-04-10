@@ -4,7 +4,7 @@ import { EMPTY_GIT, EMPTY_TRANSCRIPT, DEFAULT_CONFIG, type RenderContext } from 
 import { NERD_ICONS } from '../../src/render/icons.js';
 
 function makeCtx(ov: Partial<RenderContext> = {}): RenderContext {
-  return { input: { model: 'Opus', session_id: 't', context_window: { used_percentage: 50, remaining_percentage: 50 }, cost: { total_cost_usd: 1, total_duration_ms: 60000 }, workspace: { current_dir: '/p' } } as never, git: EMPTY_GIT, transcript: EMPTY_TRANSCRIPT, tokenSpeed: null, memory: null, gsd: null, cols: 120, config: { ...DEFAULT_CONFIG }, icons: NERD_ICONS, ...ov };
+  return { input: { model: 'Opus', session_id: 't', context_window: { used_percentage: 50, remaining_percentage: 50 }, cost: { total_cost_usd: 1, total_duration_ms: 60000 }, workspace: { current_dir: '/p' } } as never, git: EMPTY_GIT, transcript: EMPTY_TRANSCRIPT, tokenSpeed: null, memory: null, gsd: null, mcp: null, cols: 120, config: { ...DEFAULT_CONFIG }, icons: NERD_ICONS, ...ov };
 }
 
 describe('render', () => {

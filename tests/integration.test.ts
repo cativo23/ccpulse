@@ -15,6 +15,7 @@ describe('main', () => {
       getTokenSpeed: () => 142,
       getMemoryInfo: () => ({ usedBytes: 8e9, totalBytes: 16e9, percentage: 50 }),
       getGsdInfo: () => null,
+      getMcpInfo: () => null,
       getTermCols: () => 120,
     });
     const plain = stripAnsi(output);
@@ -33,6 +34,7 @@ describe('main', () => {
       getTokenSpeed: () => null,
       getMemoryInfo: () => null,
       getGsdInfo: () => null,
+      getMcpInfo: () => null,
       getTermCols: () => 120,
       loadConfig: () => ({ ...DEFAULT_CONFIG, layout: 'singleline', display: { ...DEFAULT_DISPLAY } }),
     });

@@ -23,7 +23,7 @@ const baseInput: ClaudeCodeInput = {
 function makeCtx(overrides: Partial<RenderContext> = {}): RenderContext {
   return {
     input: baseInput, git: EMPTY_GIT, transcript: EMPTY_TRANSCRIPT,
-    tokenSpeed: null, memory: null, gsd: null, cols: 120,
+    tokenSpeed: null, memory: null, gsd: null, mcp: null, cols: 120,
     config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY } },
     icons: NERD_ICONS,
     ...overrides,
