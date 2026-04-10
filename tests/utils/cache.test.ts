@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, statSync, utimesSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { readTtlCache, writeTtlCache, isMtimeFresh } from '../../src/utils/cache.js';
+
+const uid = process.getuid?.() ?? 'default';
 
 describe('TTL cache', () => {
   let dir: string;
@@ -17,8 +19,15 @@ describe('TTL cache', () => {
     const result = readTtlCache<{ value: number }>('test-key', dir, 5000);
     expect(result).toEqual({ value: 42 });
   });
+  it('creates per-user subdirectory', () => {
+    writeTtlCache('test-key', { value: 1 }, dir);
+    expect(existsSync(join(dir, `lumira-${uid}`))).toBe(true);
+  });
   it('returns null for expired cache', () => {
-    const filePath = join(dir, 'lumira-test-key.json');
+    const cacheDir = join(dir, `lumira-${uid}`);
+    const { mkdirSync } = require('node:fs');
+    mkdirSync(cacheDir, { recursive: true, mode: 0o700 });
+    const filePath = join(cacheDir, 'test-key.json');
     writeFileSync(filePath, JSON.stringify({ value: 42 }), { mode: 0o600 });
     const past = new Date(Date.now() - 10_000);
     utimesSync(filePath, past, past);
