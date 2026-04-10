@@ -1,12 +1,10 @@
 import { ICONS } from './icons.js';
 import { truncField } from './text.js';
 import type { Colors } from './colors.js';
-import type { GsdInfo } from '../types.js';
+import type { RenderContext } from '../types.js';
 
-export function renderLine4(
-  gsd: GsdInfo | null,
-  c: Colors
-): string {
+export function renderLine4(ctx: RenderContext, c: Colors): string {
+  const { gsd } = ctx;
   if (!gsd) return '';
   if (!gsd.currentTask && !gsd.updateAvailable) return '';
 

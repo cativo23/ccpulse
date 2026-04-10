@@ -3,21 +3,15 @@ import { ICONS } from './icons.js';
 import { fitSegments, truncField } from './text.js';
 import { getModelName, formatGitChanges, SEP } from './shared.js';
 import type { Colors } from './colors.js';
-import type { ClaudeCodeInput, GitStatus, TranscriptData, DisplayToggles } from '../types.js';
+import type { RenderContext, TranscriptData } from '../types.js';
 
 function getActiveTodo(transcript: TranscriptData): string | undefined {
   const inProgress = transcript.todos.filter(t => t.status === 'in_progress');
   return inProgress[0]?.content;
 }
 
-export function renderLine1(
-  input: ClaudeCodeInput,
-  git: GitStatus,
-  transcript: TranscriptData,
-  c: Colors,
-  display: DisplayToggles,
-  cols: number
-): string {
+export function renderLine1(ctx: RenderContext, c: Colors): string {
+  const { input, git, transcript, config: { display }, cols } = ctx;
   const left: string[] = [];
   const right: string[] = [];
 

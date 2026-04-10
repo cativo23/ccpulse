@@ -5,18 +5,10 @@ import { getModelName, buildContextBar, formatGitChanges, SEP_MINIMAL } from './
 import type { Colors } from './colors.js';
 import { formatTokens, formatDuration, formatCost } from '../utils/format.js';
 import { renderLine3 } from './line3.js';
-import type { ClaudeCodeInput, GitStatus, TranscriptData, DisplayToggles, GsdInfo } from '../types.js';
+import type { RenderContext } from '../types.js';
 
-export function renderMinimal(
-  input: ClaudeCodeInput,
-  git: GitStatus,
-  transcript: TranscriptData,
-  tokenSpeed: number | null,
-  gsd: GsdInfo | null,
-  c: Colors,
-  display: DisplayToggles,
-  cols: number
-): string {
+export function renderMinimal(ctx: RenderContext, c: Colors): string {
+  const { input, git, transcript, tokenSpeed, gsd, config: { display }, cols } = ctx;
   const parts: string[] = [];
 
   // Directory
@@ -114,7 +106,7 @@ export function renderMinimal(
   const mainLine = parts.join(SEP_MINIMAL);
 
   // Append tools/todos as extra line
-  const l3 = renderLine3(transcript.tools, transcript.todos, c);
+  const l3 = renderLine3(ctx, c);
   if (l3) return mainLine + '\n' + l3;
   return mainLine;
 }

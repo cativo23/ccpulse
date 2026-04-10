@@ -3,7 +3,7 @@ import { padLine, displayWidth } from './text.js';
 import { getQuotaColor, type Colors } from './colors.js';
 import { buildContextBar, SEP } from './shared.js';
 import { formatTokens, formatDuration, formatCost, formatBurnRate } from '../utils/format.js';
-import type { ClaudeCodeInput, DisplayToggles, ThinkingEffort, MemoryInfo } from '../types.js';
+import type { RenderContext } from '../types.js';
 
 export function formatCountdown(resetsAt: number): string {
   const resetsAtMs = resetsAt < 1e12 ? resetsAt * 1000 : resetsAt;
@@ -18,15 +18,8 @@ export function formatCountdown(resetsAt: number): string {
   return `${s}s`;
 }
 
-export function renderLine2(
-  input: ClaudeCodeInput,
-  tokenSpeed: number | null,
-  thinkingEffort: ThinkingEffort,
-  c: Colors,
-  display: DisplayToggles,
-  cols: number,
-  memory: MemoryInfo | null = null
-): string {
+export function renderLine2(ctx: RenderContext, c: Colors): string {
+  const { input, tokenSpeed, transcript: { thinkingEffort }, config: { display }, cols, memory } = ctx;
   const leftParts: string[] = [];
   const rightParts: string[] = [];
 

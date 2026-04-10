@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderMinimal } from '../../src/render/minimal.js';
 import { createColors, stripAnsi } from '../../src/render/colors.js';
-import { EMPTY_GIT, EMPTY_TRANSCRIPT, DEFAULT_DISPLAY } from '../../src/types.js';
-import type { ClaudeCodeInput, GitStatus } from '../../src/types.js';
+import { EMPTY_GIT, EMPTY_TRANSCRIPT, DEFAULT_CONFIG, DEFAULT_DISPLAY } from '../../src/types.js';
+import type { ClaudeCodeInput, GitStatus, RenderContext } from '../../src/types.js';
 
 const c = createColors('named');
 
@@ -22,36 +22,44 @@ const baseInput: ClaudeCodeInput = {
 
 const git: GitStatus = { branch: 'main', staged: 0, modified: 1, untracked: 0 };
 
+function makeCtx(overrides: Partial<RenderContext> = {}): RenderContext {
+  return {
+    input: baseInput, git: EMPTY_GIT, transcript: EMPTY_TRANSCRIPT,
+    tokenSpeed: null, memory: null, gsd: null, cols: 120,
+    config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY } },
+    ...overrides,
+  };
+}
+
 describe('renderMinimal', () => {
   it('shows directory', () => {
-    const out = stripAnsi(renderMinimal(baseInput, EMPTY_GIT, EMPTY_TRANSCRIPT, null, null, c, DEFAULT_DISPLAY, 120));
+    const out = stripAnsi(renderMinimal(makeCtx(), c));
     expect(out).toContain('project');
   });
 
   it('shows branch', () => {
-    const out = stripAnsi(renderMinimal(baseInput, git, EMPTY_TRANSCRIPT, null, null, c, DEFAULT_DISPLAY, 120));
+    const out = stripAnsi(renderMinimal(makeCtx({ git }), c));
     expect(out).toContain('main');
   });
 
   it('shows model', () => {
-    const out = stripAnsi(renderMinimal(baseInput, EMPTY_GIT, EMPTY_TRANSCRIPT, null, null, c, DEFAULT_DISPLAY, 120));
+    const out = stripAnsi(renderMinimal(makeCtx(), c));
     expect(out).toContain('Claude Opus 4');
   });
 
   it('shows context bar', () => {
-    const out = stripAnsi(renderMinimal(baseInput, EMPTY_GIT, EMPTY_TRANSCRIPT, null, null, c, DEFAULT_DISPLAY, 120));
+    const out = stripAnsi(renderMinimal(makeCtx(), c));
     expect(out).toContain('55%');
   });
 
   it('shows cost at >=60 cols', () => {
-    const out = stripAnsi(renderMinimal(baseInput, EMPTY_GIT, EMPTY_TRANSCRIPT, null, null, c, DEFAULT_DISPLAY, 80));
+    const out = stripAnsi(renderMinimal(makeCtx({ cols: 80 }), c));
     expect(out).toContain('$1.31');
   });
 
   it('truncates branch at <60 cols', () => {
     const git2: GitStatus = { branch: 'feature/very-long-branch-name-here', staged: 0, modified: 0, untracked: 0 };
-    const out = stripAnsi(renderMinimal(baseInput, git2, EMPTY_TRANSCRIPT, null, null, c, DEFAULT_DISPLAY, 50));
-    // Branch should be truncated to 12 chars
+    const out = stripAnsi(renderMinimal(makeCtx({ git: git2, cols: 50 }), c));
     expect(out).not.toContain('feature/very-long-branch-name-here');
   });
 
@@ -60,12 +68,12 @@ describe('renderMinimal', () => {
       ...EMPTY_TRANSCRIPT,
       tools: [{ id: '1', name: 'Read', status: 'completed' as const, startTime: new Date(), endTime: new Date() }],
     };
-    const out = renderMinimal(baseInput, EMPTY_GIT, transcript, null, null, c, DEFAULT_DISPLAY, 120);
+    const out = renderMinimal(makeCtx({ transcript }), c);
     expect(out.split('\n').length).toBe(2);
   });
 
   it('returns single line when no tools/todos', () => {
-    const out = renderMinimal(baseInput, EMPTY_GIT, EMPTY_TRANSCRIPT, null, null, c, DEFAULT_DISPLAY, 120);
+    const out = renderMinimal(makeCtx(), c);
     expect(out.split('\n').length).toBe(1);
   });
 });
