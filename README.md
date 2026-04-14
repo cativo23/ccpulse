@@ -1,6 +1,6 @@
 # lumira
 
-Real-time statusline plugin for [Claude Code](https://code.claude.com).
+Real-time statusline plugin for [Claude Code](https://code.claude.com) and Qwen Code.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Tests](https://img.shields.io/badge/tests-136%20passing-green)
@@ -20,6 +20,7 @@ Real-time statusline plugin for [Claude Code](https://code.claude.com).
 - **3-tier color system** — named ANSI, 256-color, truecolor (auto-detected)
 - **Config-driven** — toggle any feature via JSON config + CLI flags
 - **Zero runtime dependencies**
+- **Dual-platform support** — works with both Claude Code and Qwen Code statusline payloads
 
 ## Install
 
@@ -129,12 +130,47 @@ All fields are optional — defaults are shown above.
 ```bash
 lumira --minimal    # Force minimal mode
 lumira --gsd        # Enable GSD integration
+lumira --qwen       # Force Qwen Code single-line output
+```
+
+### Qwen Code Support
+
+Lumira detects the platform automatically. When running under Qwen Code, it parses Qwen-specific fields:
+
+```jsonc
+{
+  "git": { "branch": "main" },
+  "metrics": {
+    "models": {
+      "qwen-coder-plus": {
+        "api": { "total_requests": 42, "total_errors": 0, "total_latency_ms": 12000 },
+        "tokens": { "prompt": 15000, "completion": 5000, "total": 20000, "cached": 8000, "thoughts": 150 }
+      }
+    },
+    "files": { "total_lines_added": 150, "total_lines_removed": 30 }
+  }
+}
+```
+
+The `--qwen` preset is recommended for Qwen Code, which renders a single line with model, context bar, requests, cached tokens, and thoughts.
+
+#### Qwen Code Setup
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "npx lumira@latest --qwen",
+    "padding": 0
+  }
+}
 ```
 
 ## Architecture
 
-```
-stdin (JSON from Claude Code)
+```text
+stdin (JSON from Claude Code or Qwen Code)
+  → normalize() — unifies both platform payloads
   → parsers (git, transcript, token-speed, memory, gsd)
   → RenderContext
   → render (line1-4 or minimal)
