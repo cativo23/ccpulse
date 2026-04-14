@@ -5,23 +5,21 @@ import type { Colors } from './colors.js';
 import { formatTokens, formatDuration, formatCost } from '../utils/format.js';
 import { renderLine3 } from './line3.js';
 import type { RenderContext } from '../types.js';
-import { isQwenInput } from '../types.js';
 
 export function renderMinimal(ctx: RenderContext, c: Colors): string {
   const { input, git, transcript, tokenSpeed, gsd, config: { display }, cols, icons } = ctx;
   const parts: string[] = [];
 
   // Directory
-  const cwd = input.cwd || input.workspace?.current_dir || '';
+  const cwd = input.cwd;
   if (display.directory && cwd) {
     const dirName = basename(cwd) || cwd;
     const dirLen = cols < 60 ? 12 : cols < 80 ? 20 : 30;
     parts.push(c.brightBlue(truncField(dirName, dirLen)));
   }
 
-  // Branch (use Qwen's native git.branch if available)
-  const qwenBranch = isQwenInput(input) ? input.git?.branch : undefined;
-  const branchName = qwenBranch || git.branch;
+  // Branch
+  const branchName = input.gitBranch || git.branch;
   if (display.branch && branchName) {
     const branchLen = cols < 60 ? 12 : cols < 80 ? 20 : branchName.length;
     let branchStr = c.magenta(truncField(branchName, branchLen));
@@ -34,35 +32,35 @@ export function renderMinimal(ctx: RenderContext, c: Colors): string {
 
   // Model
   if (display.model) {
-    const modelName = getModelName(input.model);
+    const modelName = getModelName(input.raw.model);
     if (modelName) parts.push(c.cyan(truncField(modelName, 20)));
   }
 
   // Context bar
   if (display.contextBar) {
-    parts.push(buildContextBar(input.context_window.used_percentage, c, { segments: 10, pctInsideBar: true, iconSet: icons }));
+    parts.push(buildContextBar(input.context.usedPercentage, c, { segments: 10, pctInsideBar: true, iconSet: icons }));
   }
 
   // Only add these if cols >= 60
   if (cols >= 60) {
     // Tokens
     if (display.tokens) {
-      const inTokens = input.context_window.total_input_tokens;
-      const outTokens = input.context_window.total_output_tokens;
+      const inTokens = input.tokens.input;
+      const outTokens = input.tokens.output;
       const tParts: string[] = [];
-      if (inTokens != null) tParts.push(`${formatTokens(inTokens)}↑`);
-      if (outTokens != null) tParts.push(`${formatTokens(outTokens)}↓`);
+      if (inTokens > 0) tParts.push(`${formatTokens(inTokens)}↑`);
+      if (outTokens > 0) tParts.push(`${formatTokens(outTokens)}↓`);
       if (tParts.length > 0) parts.push(tParts.join(' '));
     }
 
     // Cost (Claude only)
-    if (display.cost && input.cost) {
-      parts.push(formatCost(input.cost.total_cost_usd));
+    if (display.cost && input.cost != null) {
+      parts.push(formatCost(input.cost));
     }
 
     // Duration (Claude only)
-    if (display.duration && input.cost) {
-      parts.push(formatDuration(input.cost.total_duration_ms));
+    if (display.duration && input.durationMs != null) {
+      parts.push(formatDuration(input.durationMs));
     }
 
     // Token speed
@@ -70,39 +68,35 @@ export function renderMinimal(ctx: RenderContext, c: Colors): string {
       parts.push(c.dim(`${tokenSpeed} tok/s`));
     }
 
-    // Lines changed (from Claude cost or Qwen metrics)
+    // Lines changed
     if (display.linesChanged) {
-      const qwenMetrics = isQwenInput(input) ? input.metrics?.files : undefined;
-      const added = (input.cost?.total_lines_added ?? qwenMetrics?.total_lines_added) ?? 0;
-      const removed = (input.cost?.total_lines_removed ?? qwenMetrics?.total_lines_removed) ?? 0;
+      const added = input.linesAdded;
+      const removed = input.linesRemoved;
       if (added > 0 || removed > 0) {
         parts.push(`${c.green(`+${added}`)}${c.red(`-${removed}`)}`);
       }
     }
 
     // Qwen Code: API metrics (requests, cached tokens, thoughts)
-    if (isQwenInput(input) && input.metrics?.models) {
-      const entries = Object.values(input.metrics.models);
-      if (entries.length > 0) {
-        const mm = entries[0];
-        if (mm.api?.total_requests > 0) {
-          let reqStr = `${mm.api.total_requests} req`;
-          if (mm.api.total_errors > 0) reqStr += `(${mm.api.total_errors} err)`;
-          parts.push(c.dim(`${icons.bolt} ${reqStr}`));
-        }
-        if (mm.tokens?.cached > 0) {
-          parts.push(c.dim(`${icons.comment} ${formatTokens(mm.tokens.cached)} cached`));
-        }
-        if (mm.tokens?.thoughts > 0) {
-          const label = mm.tokens.thoughts === 1 ? 'thought' : 'thoughts';
-          parts.push(c.dim(`^${formatTokens(mm.tokens.thoughts)} ${label}`));
-        }
+    if (input.platform === 'qwen-code' && input.performance) {
+      const perf = input.performance;
+      if (perf.requests > 0) {
+        let reqStr = `${perf.requests} req`;
+        if (perf.errors > 0) reqStr += `(${perf.errors} err)`;
+        parts.push(c.dim(`${icons.bolt} ${reqStr}`));
+      }
+      if (input.tokens.cached != null && input.tokens.cached > 0) {
+        parts.push(c.dim(`${icons.comment} ${formatTokens(input.tokens.cached)} cached`));
+      }
+      if (input.tokens.thoughts != null && input.tokens.thoughts > 0) {
+        const label = input.tokens.thoughts === 1 ? 'thought' : 'thoughts';
+        parts.push(c.dim(`^${formatTokens(input.tokens.thoughts)} ${label}`));
       }
     }
 
     // Style
-    if (display.style && input.output_style?.name) {
-      parts.push(c.dim(input.output_style.name));
+    if (display.style && input.raw.output_style?.name) {
+      parts.push(c.dim(input.raw.output_style.name));
     }
 
     // Version
@@ -116,13 +110,13 @@ export function renderMinimal(ctx: RenderContext, c: Colors): string {
     }
 
     // Worktree
-    if (display.worktree && input.worktree?.name) {
-      parts.push(c.dim(`${icons.tree} ${truncField(input.worktree.name, 12)}`));
+    if (display.worktree && input.raw.worktree?.name) {
+      parts.push(c.dim(`${icons.tree} ${truncField(input.raw.worktree.name, 12)}`));
     }
 
     // Agent
-    if (display.agent && input.agent?.name) {
-      parts.push(c.dim(`${icons.cubes} ${truncField(input.agent.name, 12)}`));
+    if (display.agent && input.raw.agent?.name) {
+      parts.push(c.dim(`${icons.cubes} ${truncField(input.raw.agent.name, 12)}`));
     }
   }
 

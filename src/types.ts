@@ -16,15 +16,11 @@ export interface ClaudeCodeInput {
     cache_read_input_tokens?: number;
     cache_creation_input_tokens?: number;
   };
-  cost?: {
+  cost: {
     total_cost_usd: number;
     total_duration_ms: number;
     total_lines_added?: number;
     total_lines_removed?: number;
-  };
-  metrics?: {
-    models?: Record<string, unknown>;
-    files?: { total_lines_added?: number; total_lines_removed?: number };
   };
   transcript_path?: string;
   output_style?: { name: string };
@@ -129,8 +125,10 @@ export interface McpInfo {
 
 // ── Render context ──────────────────────────────────────────────────
 
+import type { NormalizedInput } from './normalize.js';
+
 export interface RenderContext {
-  input: RawInput;
+  input: NormalizedInput;
   git: GitStatus;
   transcript: TranscriptData;
   tokenSpeed: number | null;
@@ -295,12 +293,6 @@ export interface QwenInput {
   worktree?: { name: string };
   rate_limits?: { five_hour?: { used_percentage: number; resets_at?: number }; seven_day?: { used_percentage: number; resets_at?: number } };
   exceeds_200k_tokens?: boolean;
-}
-
-/** Detect if the input came from Qwen Code vs Claude Code.
- *  Qwen sends metrics.models; Claude sends cost.total_cost_usd. */
-export function isQwenInput(input: ClaudeCodeInput & { metrics?: unknown }): input is QwenInput {
-  return !!(input.metrics && typeof input.metrics === 'object' && 'models' in input.metrics);
 }
 
 /** Union of all supported platform input types */

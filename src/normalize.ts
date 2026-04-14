@@ -5,7 +5,10 @@
 // Renderers check field presence, not platform identity.
 
 import type { ClaudeCodeInput, QwenInput, RawInput } from './types.js';
-import { isQwenInput } from './types.js';
+
+export function isQwenInput(input: RawInput): input is QwenInput {
+  return !!((input as QwenInput).metrics && typeof (input as QwenInput).metrics === 'object' && 'models' in (input as QwenInput).metrics);
+}
 
 export type Platform = 'claude-code' | 'qwen-code';
 
@@ -60,6 +63,11 @@ export interface NormalizedInput {
 
   /** Escape hatch: access raw platform data for platform-specific widgets */
   raw: RawInput;
+}
+
+/** Strip ANSI control characters and other non-printable chars from branch names */
+function sanitizeBranch(branch: string): string {
+  return branch.replace(/[\x00-\x1f\x7f]/g, '');
 }
 
 export function normalize(input: RawInput): NormalizedInput {
@@ -133,7 +141,7 @@ export function normalize(input: RawInput): NormalizedInput {
     cost: claude ? claude.cost?.total_cost_usd : undefined,
     durationMs: claude ? claude.cost?.total_duration_ms : undefined,
     performance,
-    gitBranch: qwen ? qwen.git?.branch : undefined,
+    gitBranch: qwen && qwen.git?.branch ? sanitizeBranch(qwen.git.branch) : undefined,
     linesAdded,
     linesRemoved,
     vimMode: input.vim?.mode,
