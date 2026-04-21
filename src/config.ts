@@ -3,6 +3,9 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { DEFAULT_CONFIG, DEFAULT_DISPLAY, type HudConfig, type DisplayToggles, type ColorConfig } from './types.js';
 
+let qwenWarningShown = false;
+export function _resetMigrationFlags(): void { qwenWarningShown = false; }
+
 export function loadConfig(configDir: string = join(homedir(), '.config', 'lumira')): HudConfig {
   const p = join(configDir, 'config.json');
   if (!existsSync(p)) return { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY } };
@@ -12,7 +15,15 @@ export function loadConfig(configDir: string = join(homedir(), '.config', 'lumir
   } catch { return { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY } }; }
 }
 
-function mergeConfig(raw: Record<string, unknown>): HudConfig {
+function mergeConfig(rawIn: Record<string, unknown>): HudConfig {
+  let raw = rawIn;
+  if (raw.preset === 'qwen') {
+    if (!qwenWarningShown) {
+      process.stderr.write("[lumira] 'qwen' preset is removed — using 'minimal' instead\n");
+      qwenWarningShown = true;
+    }
+    raw = { ...raw, preset: 'minimal' };
+  }
   const layout = (['multiline', 'singleline', 'auto'] as const).includes(raw.layout as never) ? raw.layout as HudConfig['layout'] : DEFAULT_CONFIG.layout;
   const colors: ColorConfig = { ...DEFAULT_CONFIG.colors };
   if (raw.colors && typeof raw.colors === 'object') {
@@ -22,7 +33,7 @@ function mergeConfig(raw: Record<string, unknown>): HudConfig {
   const result: HudConfig = { layout, gsd: typeof raw.gsd === 'boolean' ? raw.gsd : DEFAULT_CONFIG.gsd, display: { ...DEFAULT_DISPLAY }, colors };
 
   // Apply preset FIRST (sets layout + display defaults)
-  const validPresets = ['full', 'balanced', 'minimal', 'qwen'] as const;
+  const validPresets = ['full', 'balanced', 'minimal'] as const;
   if (validPresets.includes(raw.preset as never)) applyPreset(result, raw.preset as NonNullable<HudConfig['preset']>);
 
   // Then overlay user's explicit display toggles (user wins over preset)
@@ -67,30 +78,6 @@ const PRESET_DEFS: Record<NonNullable<HudConfig['preset']>, PresetDef> = {
       cacheMetrics: false,
     },
   },
-  qwen: {
-    layout: 'singleline',
-    display: {
-      tokens: false,
-      burnRate: false,
-      duration: false,
-      tokenSpeed: false,
-      rateLimits: false,
-      tools: false,
-      todos: false,
-      vim: false,
-      effort: false,
-      worktree: false,
-      agent: false,
-      sessionName: false,
-      style: false,
-      version: false,
-      linesChanged: false,
-      memory: false,
-      contextTokens: false,
-      cacheMetrics: false,
-      mcp: false,
-    },
-  },
   minimal: {
     layout: 'singleline',
     display: {
@@ -132,10 +119,9 @@ export function mergeCliFlags(config: HudConfig, argv: string[]): HudConfig {
   // Shorthand flags
   if (argv.includes('--minimal')) applyPreset(r, 'minimal');
   if (argv.includes('--balanced')) applyPreset(r, 'balanced');
-  if (argv.includes('--qwen')) applyPreset(r, 'qwen');
   if (argv.includes('--full')) applyPreset(r, 'full');
   for (const arg of argv) {
-    const presetMatch = arg.match(/^--preset[= ]?(full|balanced|minimal|qwen)$/);
+    const presetMatch = arg.match(/^--preset[= ]?(full|balanced|minimal)$/);
     if (presetMatch) { applyPreset(r, presetMatch[1] as NonNullable<HudConfig['preset']>); continue; }
     const iconsMatch = arg.match(/^--icons[= ]?(nerd|emoji|none)$/);
     if (iconsMatch) { r.icons = iconsMatch[1] as HudConfig['icons']; continue; }

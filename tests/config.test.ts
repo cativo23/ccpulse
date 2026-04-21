@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadConfig, mergeCliFlags } from '../src/config.js';
+import { loadConfig, mergeCliFlags, _resetMigrationFlags } from '../src/config.js';
 import { DEFAULT_CONFIG } from '../src/types.js';
 
 describe('loadConfig', () => {
@@ -122,4 +122,35 @@ describe('mergeCliFlags', () => {
     expect(r.layout).toBe('singleline');
   });
   it('parses --icons=none', () => { expect(mergeCliFlags(DEFAULT_CONFIG, ['node', 'i', '--icons=none']).icons).toBe('none'); });
+});
+
+describe('qwen preset migration', () => {
+  let dir: string;
+  let errSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'cc-cfg-qwen-'));
+    _resetMigrationFlags();
+    errSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+    errSpy.mockRestore();
+  });
+
+  it('coerces legacy preset "qwen" to "minimal"', () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), '{"preset":"qwen"}');
+    const c = loadConfig(dir);
+    expect(c.preset).toBe('minimal');
+    expect(c.layout).toBe('singleline');
+  });
+
+  it('writes a deprecation warning to stderr when "qwen" preset is seen', () => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'config.json'), '{"preset":"qwen"}');
+    loadConfig(dir);
+    const calls = errSpy.mock.calls.flat().join('');
+    expect(calls).toContain("'qwen' preset is removed");
+  });
 });
