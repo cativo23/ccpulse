@@ -1,5 +1,5 @@
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, existsSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { DEFAULT_CONFIG, DEFAULT_DISPLAY, type HudConfig, type DisplayToggles, type ColorConfig } from './types.js';
 
@@ -127,4 +127,34 @@ export function mergeCliFlags(config: HudConfig, argv: string[]): HudConfig {
     if (iconsMatch) { r.icons = iconsMatch[1] as HudConfig['icons']; continue; }
   }
   return r;
+}
+
+export interface WizardResult {
+  preset: 'full' | 'balanced' | 'minimal';
+  theme?: string;
+  icons: 'nerd' | 'emoji' | 'none';
+}
+
+export function saveConfig(wizard: WizardResult, configPath: string): void {
+  mkdirSync(dirname(configPath), { recursive: true });
+
+  let existing: Record<string, unknown> = {};
+  if (existsSync(configPath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(configPath, 'utf8'));
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        existing = parsed as Record<string, unknown>;
+      }
+    } catch {
+      existing = {};
+    }
+  }
+
+  const merged: Record<string, unknown> = { ...existing, preset: wizard.preset, icons: wizard.icons };
+  if (wizard.theme !== undefined) merged.theme = wizard.theme;
+  else delete merged.theme;
+
+  const tmp = configPath + '.tmp';
+  writeFileSync(tmp, JSON.stringify(merged, null, 2) + '\n', { mode: 0o600 });
+  renameSync(tmp, configPath);
 }
