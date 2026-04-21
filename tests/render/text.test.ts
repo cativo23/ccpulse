@@ -36,6 +36,33 @@ describe('fitSegments', () => {
     const result = fitSegments(['LEFT'], ['RIGHT'], ' | ', 10);
     expect(result).toContain('LEFT');
   });
+
+  it('drops tail left segment when left alone overflows', () => {
+    const model = 'A'.repeat(20);
+    const branch = 'B'.repeat(85);
+    const dir = 'C'.repeat(25);
+    const result = fitSegments([model, branch, dir], [], ' | ', 120);
+    expect(displayWidth(result)).toBeLessThanOrEqual(116);
+    expect(result).not.toContain('C'.repeat(25));
+  });
+
+  it('last-resort: truncates single oversized segment without ANSI bleed', () => {
+    const result = fitSegments(['X'.repeat(200)], [], ' | ', 50);
+    expect(displayWidth(result)).toBeLessThanOrEqual(46);
+    expect(result.endsWith('…')).toBe(true);
+  });
+
+  it('ANSI-colored left that overflows stays within displayWidth bounds', () => {
+    const colored = `\x1b[36m${'B'.repeat(90)}\x1b[0m`;
+    const result = fitSegments([colored], [], ' | ', 80);
+    expect(displayWidth(result)).toBeLessThanOrEqual(76);
+  });
+
+  it('leftW === safeCols exactly returns left unchanged', () => {
+    const left = 'A'.repeat(16); // safeCols = 20-4 = 16
+    const result = fitSegments([left], [], ' | ', 20);
+    expect(result).toBe(left);
+  });
 });
 
 describe('padLine', () => {

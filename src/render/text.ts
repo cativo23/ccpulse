@@ -40,20 +40,31 @@ export function truncatePath(str: string, maxLen: number = 20): string {
 }
 
 export function fitSegments(left: string[], right: string[], sep: string, cols: number): string {
-  const safeCols = cols - 4;
-  const leftStr = left.join(sep);
-  const leftW = displayWidth(leftStr);
-  for (let r = right.length; r >= 0; r--) {
-    const rSlice = right.slice(0, r);
-    if (rSlice.length === 0) return leftStr;
-    const rightStr = rSlice.join(sep);
-    const rightW = displayWidth(rightStr);
-    if (leftW + 1 + rightW <= safeCols) {
-      const gap = Math.max(1, safeCols - leftW - rightW);
-      return leftStr + ' '.repeat(gap) + rightStr;
+  const safeCols = Math.max(1, cols - 4);
+
+  for (let l = left.length; l >= 1; l--) {
+    const lSlice = left.slice(0, l);
+    const leftStr = lSlice.join(sep);
+    const leftW = displayWidth(leftStr);
+
+    if (leftW > safeCols) continue;
+
+    for (let r = right.length; r >= 0; r--) {
+      const rSlice = right.slice(0, r);
+      if (rSlice.length === 0) return leftStr;
+      const rightStr = rSlice.join(sep);
+      const rightW = displayWidth(rightStr);
+      if (leftW + 1 + rightW <= safeCols) {
+        const gap = Math.max(1, safeCols - leftW - rightW);
+        return leftStr + ' '.repeat(gap) + rightStr;
+      }
     }
+    return leftStr;
   }
-  return leftStr;
+
+  // Last resort: even the first left segment alone exceeds safeCols.
+  // Strip ANSI before hard-truncating to avoid cutting mid-escape-sequence.
+  return truncField(stripAnsi(left[0] ?? ''), safeCols);
 }
 
 export function padLine(left: string, right: string, cols: number): string {
