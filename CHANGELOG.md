@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-21
+
+### Added
+- Interactive install wizard (`npx lumira install`): choose preset, theme, and icons with arrow-key navigation and a live preview. Pre-selects current config values when re-running.
+- ASCII banner printed on install with dynamic version from `package.json`.
+- `/lumira` skill is now installed for Qwen Code as well (when `~/.qwen/` is detected).
+- Render layer auto-switches to single-line output when the caller is Qwen Code, so Qwen users see the rich compact line regardless of their configured layout.
+
+### Changed
+- `saveConfig` writes `~/.config/lumira/config.json` atomically (tmp file + rename) with `0o600` permissions, preserving any keys the user set by hand.
+- Branch name display caps raised across all terminal widths — long CA-ticket style branch names now show significantly more characters before truncating.
+- `fitSegments` now drops tail left-side segments on overflow (symmetric with right-side behavior), preventing terminal line wrap when left segments collectively exceed the available width.
+
+### Removed
+- **BREAKING:** `qwen` preset removed. It was functionally identical to `minimal`; with the render-layer auto-switch, the alias no longer serves a purpose. Existing configs with `preset: "qwen"` are silently coerced to `minimal` and a one-shot stderr warning is printed. CLI flag `--qwen` is removed; use `--minimal` instead.
+
 ## [0.3.0] - 2026-04-15
 
 ### Added
@@ -125,7 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GSD session IDs sanitized against path traversal
 - `execFile` used instead of `exec` to prevent shell injection (except terminal width detection where shell redirect is required with procfs-sourced paths)
 
-[Unreleased]: https://github.com/cativo23/lumira/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/cativo23/lumira/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/cativo23/lumira/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/cativo23/lumira/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/cativo23/lumira/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/cativo23/lumira/compare/v0.2.0...v0.2.1
