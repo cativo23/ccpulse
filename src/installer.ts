@@ -3,6 +3,9 @@ import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
+import { runWizard } from './installer-wizard.js';
+import { saveConfig, loadConfig, type WizardResult } from './config.js';
+import { getBanner, getSubtitle } from './tui/banner.js';
 
 // ── ANSI helpers ────────────────────────────────────────────────────
 const RST = '\x1b[0m';
@@ -25,11 +28,22 @@ const LUMIRA_STATUSLINE = {
 // ── Install options (DI for testing) ────────────────────────────────
 export interface InstallerOptions {
   settingsPath?: string;
+  configPath?: string;
   confirm?: (prompt: string) => Promise<boolean>;
+  stdin?: NodeJS.ReadStream | (import('node:stream').Readable & {
+    isTTY?: boolean;
+    isRaw?: boolean;
+    setRawMode?: (flag: boolean) => unknown;
+  });
+  stdout?: NodeJS.WriteStream | (import('node:stream').Writable & { columns?: number });
 }
 
 function defaultSettingsPath(): string {
   return join(homedir(), '.claude', 'settings.json');
+}
+
+function defaultConfigPath(): string {
+  return join(homedir(), '.config', 'lumira', 'config.json');
 }
 
 function isLumira(statusLine: unknown): boolean {
@@ -80,7 +94,98 @@ export async function install(opts: InstallerOptions = {}): Promise<string> {
   const settingsPath = opts.settingsPath ?? defaultSettingsPath();
   const backupPath = settingsPath + '.lumira.bak';
   const confirm = opts.confirm ?? promptYN;
-  const lines: string[] = [header()];
+  const lines: string[] = [];
+
+  // ── Wizard / config path ─────────────────────────────────────────
+  // When configPath is not provided, skip the wizard and config write
+  // entirely (legacy path — preserves existing test behaviour).
+  const runInteractive = opts.configPath !== undefined;
+
+  if (runInteractive) {
+    const configPath = opts.configPath as string;
+    const stdin = opts.stdin;
+    const stdout = opts.stdout;
+
+    // Print banner on TTY
+    if (stdin?.isTTY) {
+      const banner = getBanner({ width: (stdout as { columns?: number } | undefined)?.columns });
+      if (banner) {
+        const subtitle = getSubtitle();
+        (stdout as { write?: (s: string) => void } | undefined)?.write?.(banner + '\n ' + subtitle + '\n');
+      }
+    }
+
+    // Load existing config to pre-populate wizard selections
+    const existingConfig = loadConfig(dirname(configPath));
+    const current = {
+      preset: existingConfig.preset,
+      theme: existingConfig.theme,
+      icons: existingConfig.icons,
+    };
+
+    // Determine wizard result
+    let wizard: WizardResult;
+    if (stdin?.isTTY) {
+      const result = await runWizard({ current, stdin, stdout });
+      if (result === null) {
+        lines.push(`\n  Installation cancelled.\n`);
+        return lines.join('\n') + '\n';
+      }
+      wizard = result;
+    } else {
+      // Non-TTY: use defaults
+      wizard = { preset: 'balanced', icons: 'nerd' };
+      lines.push(ok('Non-interactive mode — using defaults (preset: balanced, icons: nerd)'));
+    }
+
+    // ── settings.json read/replace/backup ──────────────────────────
+    let settings: Record<string, unknown> = {};
+
+    if (existsSync(settingsPath)) {
+      try {
+        settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+      } catch {
+        lines.push(warn('Could not parse existing settings.json, creating fresh'));
+        settings = {};
+      }
+    }
+
+    if (settings.statusLine) {
+      if (isLumira(settings.statusLine)) {
+        lines.push(ok('lumira is already configured as your statusline'));
+        saveConfig(wizard, configPath);
+        lines.push(ok(`Saved config → ${DIM}${configPath}${RST}`));
+        lines.push(...installSkill());
+        return lines.join('\n') + '\n';
+      }
+
+      const currentCmd = (settings.statusLine as Record<string, unknown>).command ?? 'unknown';
+      lines.push(warn(`Current statusline: ${YELLOW}${currentCmd}${RST}`));
+      const accepted = await confirm('Replace with lumira?');
+      if (!accepted) {
+        lines.push(`\n  Aborted. No changes made.\n`);
+        return lines.join('\n') + '\n';
+      }
+
+      copyFileSync(settingsPath, backupPath);
+      lines.push(ok(`Backed up existing settings → ${DIM}settings.json.lumira.bak${RST}`));
+    }
+
+    settings.statusLine = { ...LUMIRA_STATUSLINE };
+    mkdirSync(dirname(settingsPath), { recursive: true });
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', { mode: 0o600 });
+    lines.push(ok('Configured lumira as statusline'));
+
+    saveConfig(wizard, configPath);
+    lines.push(ok(`Saved config → ${DIM}${configPath}${RST}`));
+
+    lines.push(...installSkill());
+    lines.push(`\n  Restart Claude Code to see your statusline.\n`);
+    return lines.join('\n') + '\n';
+  }
+
+  // ── Legacy path (no configPath) — original behaviour ─────────────
+  lines.push(header());
 
   let settings: Record<string, unknown> = {};
 
@@ -117,9 +222,7 @@ export async function install(opts: InstallerOptions = {}): Promise<string> {
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', { mode: 0o600 });
   lines.push(ok('Configured lumira as statusline'));
 
-  // Install /lumira skill
   lines.push(...installSkill());
-
   lines.push(`\n  Restart Claude Code to see your statusline.\n`);
   return lines.join('\n') + '\n';
 }
