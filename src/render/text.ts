@@ -59,7 +59,6 @@ export function fitSegments(left: string[], right: string[], sep: string, cols: 
         return leftStr + ' '.repeat(gap) + rightStr;
       }
     }
-    return leftStr;
   }
 
   // Last resort: even the first left segment alone exceeds safeCols.
