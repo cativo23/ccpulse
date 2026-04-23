@@ -30,6 +30,8 @@ export function getMcpInfo(cwd: string): McpInfo | null {
         servers.push({ name, status: 'ok' });
         added.push(name);
       }
+      // SECURITY: only log server names. `raw.mcpServers[name]` values contain
+      // `env` / `args` which often carry API tokens — never log the raw object.
       if (log.enabled && added.length > 0) log('loaded from', p, added);
     } catch (err) {
       log('malformed JSON:', p, (err as Error).message);

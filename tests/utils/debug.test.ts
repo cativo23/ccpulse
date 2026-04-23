@@ -24,8 +24,8 @@ describe('debug', () => {
     expect(writeSpy).not.toHaveBeenCalled();
   });
 
-  it('is silent for falsy string values (0, false, empty)', () => {
-    for (const v of ['0', 'false', '', 'FALSE']) {
+  it('is silent for falsy string values (0, false, empty, no, off, case-insensitive)', () => {
+    for (const v of ['0', 'false', '', 'FALSE', 'no', 'NO', 'off', 'Off']) {
       process.env['LUMIRA_DEBUG'] = v;
       const log = debug('test');
       expect(log.enabled).toBe(false);
@@ -54,18 +54,19 @@ describe('debug', () => {
     expect(output).toContain('{"tools":5,"durationMs":12}');
   });
 
-  it('handles circular references gracefully (falls back to String)', () => {
+  it('annotates unserializable values explicitly', () => {
     process.env['LUMIRA_DEBUG'] = '1';
     const log = debug('ns');
     const circular: Record<string, unknown> = {};
     circular.self = circular;
     log(circular);
-    // Should not throw; output falls back to String(obj)
-    expect(writeSpy).toHaveBeenCalled();
+    const output = writeSpy.mock.calls[0][0] as string;
+    // Explicit marker so a genuine serialization bug doesn't degrade silently.
+    expect(output).toContain('<unserializable:');
   });
 
-  it('accepts any truthy non-sentinel value', () => {
-    for (const v of ['1', 'true', 'yes', 'anything']) {
+  it('accepts any truthy value outside the denylist', () => {
+    for (const v of ['1', 'true', 'anything']) {
       process.env['LUMIRA_DEBUG'] = v;
       const log = debug('ns');
       expect(log.enabled).toBe(true);

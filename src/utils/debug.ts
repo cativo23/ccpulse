@@ -2,23 +2,29 @@
  * Lightweight debug logger gated on the `LUMIRA_DEBUG` env var.
  *
  * Statusline stdout must stay clean (Claude Code parses it), so diagnostic
- * output goes to stderr. No-op when `LUMIRA_DEBUG` is unset/empty/"0"/"false",
- * so the branch is effectively free in production.
+ * output goes to stderr. No-op when `LUMIRA_DEBUG` is unset or set to a
+ * denylisted value (`0`, `false`, `no`, `off`, empty), so the branch is
+ * effectively free in production.
+ *
+ * Args are space-joined; objects serialize via `JSON.stringify`. Unserializable
+ * values (circular refs, BigInt, getters-that-throw) are annotated as
+ * `<unserializable:...>` rather than silently becoming generic `[object Object]`.
  *
  * Usage:
  *   const log = debug('transcript');
- *   log('cache hit %s', resolved);   // [lumira:transcript] cache hit /path
- *   log({ lines, durationMs });      // [lumira:transcript] { lines: 420, durationMs: 3 }
+ *   log('cache hit:', resolved);     // [lumira:transcript] cache hit: /path
+ *   log({ lines, durationMs });      // [lumira:transcript] {"lines":420,"durationMs":3}
  *
  * Enable with:
  *   LUMIRA_DEBUG=1 claude      # or export LUMIRA_DEBUG=1
  */
 
+const FALSY_VALUES = new Set(['', '0', 'false', 'no', 'off']);
+
 function debugEnabled(): boolean {
   const v = process.env['LUMIRA_DEBUG'];
   if (!v) return false;
-  const lower = v.toLowerCase();
-  return lower !== '0' && lower !== 'false' && lower !== '';
+  return !FALSY_VALUES.has(v.toLowerCase());
 }
 
 function format(args: unknown[]): string {
@@ -28,7 +34,9 @@ function format(args: unknown[]): string {
       try {
         return JSON.stringify(a);
       } catch {
-        return String(a);
+        // Circular refs, BigInt, getter-that-throws, etc. Annotate explicitly
+        // so a real bug doesn't silently degrade to generic String coercion.
+        return `<unserializable:${String(a)}>`;
       }
     })
     .join(' ');

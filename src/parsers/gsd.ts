@@ -144,6 +144,9 @@ export function getGsdInfo(cwd: string, opts: GsdInfoOptions = {}): GsdInfo | nu
     log('no STATE.md found walking up from:', cwd || process.cwd());
   }
 
-  if (!updateAvailable && !currentTask) return null;
+  if (!updateAvailable && !currentTask) {
+    log('no gsd signal — update=false, task=none (line4 will be empty)');
+    return null;
+  }
   return { updateAvailable, currentTask };
 }
