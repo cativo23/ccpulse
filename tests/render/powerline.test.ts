@@ -124,6 +124,16 @@ describe('powerline', () => {
       const rendered = renderPowerline(segments, POWERLINE_STYLES.arrow, 'truecolor', 120);
       expect(powerlineWidth(segments, POWERLINE_STYLES.arrow)).toBe(displayWidth(rendered));
     });
+
+    it('width matches rendered output for all 7 styles', () => {
+      const segments = [seg('hello', RED, 100), seg('world', GREEN, 90)];
+      for (const name of ['arrow', 'flame', 'slant', 'round', 'diamond', 'compatible', 'plain'] as const) {
+        const style = POWERLINE_STYLES[name];
+        const rendered = renderPowerline(segments, style, 'truecolor', 120);
+        expect(powerlineWidth(segments, style), `width mismatch for ${name}`)
+          .toBe(displayWidth(rendered));
+      }
+    });
   });
 
   describe('applyPriorityEviction', () => {
@@ -153,6 +163,38 @@ describe('powerline', () => {
       const original = segments[0].text.length;
       const kept = applyPriorityEviction(segments, POWERLINE_STYLES.arrow, 15);
       expect(kept[0].text.length).toBeLessThan(original);
+      expect(kept[0].text).toContain('…');
+    });
+
+    it('preserves the first segment when priorities tie', () => {
+      // Previously strict `<` + left-to-right scan would drop the model on ties.
+      const segments = [
+        seg('keep-me', RED, 50),
+        seg('drop',    GREEN, 50),
+      ];
+      const kept = applyPriorityEviction(segments, POWERLINE_STYLES.arrow, 20);
+      expect(kept.map(s => s.text)).toContain('keep-me');
+    });
+
+    it('truncation budget respects diamond style geometry', () => {
+      // Diamond uses leftCap+rightCap (2 cols) + padding (2) + content,
+      // vs arrow's leftCap(0) + terminator(1) + padding(2) + content.
+      // Budget calc must differ by 1 to stay within safeCols.
+      const long = 'a'.repeat(50);
+      const segments = [seg(long, RED, 100)];
+      const kept = applyPriorityEviction(segments, POWERLINE_STYLES.diamond, 20);
+      const rendered = renderPowerline(kept, POWERLINE_STYLES.diamond, 'truecolor', 20);
+      const safeCols = 20 - 4;
+      expect(displayWidth(rendered)).toBeLessThanOrEqual(safeCols);
+    });
+
+    it('truncates hyperlink-wrapped text without leaking raw escape bytes', () => {
+      const osc = '\x1b]8;;https://example.com\x1b\\clickable-label-text\x1b]8;;\x1b\\';
+      const segments = [{ text: osc, bg: RED, fg: WHITE, priority: 100 } as PowerlineSegment];
+      const kept = applyPriorityEviction(segments, POWERLINE_STYLES.arrow, 15);
+      // stripAnsi must run before truncField so the result is plain text + ellipsis,
+      // not a cut-in-half OSC 8 sequence.
+      expect(kept[0].text).not.toContain('\x1b');
       expect(kept[0].text).toContain('…');
     });
   });

@@ -1,5 +1,6 @@
 import type { ColorMode } from './colors.js';
 import { displayWidth, truncField } from './text.js';
+import { stripAnsi } from './colors.js';
 import { type RGB, rgbTo256Index } from '../themes.js';
 
 // Powerline renderer — segment-based with colored backgrounds and glyph
@@ -42,7 +43,10 @@ export const POWERLINE_STYLES: Record<Exclude<PowerlineStyleName, 'auto'>, Style
   // has a distinct bg — the thin variant would only apply if we re-used a bg.
   round:      { leftCap: '', sep: '', rightCap: '', sepWidth: 1 },
   diamond:    { leftCap: '', rightCap: '', gap: true, sepWidth: 2 },
-  compatible: { sep: '▶', sepWidth: 1 },
+  // `▶` (U+25B6) sits in the 0x25A0–0x25FF range which displayWidth treats as
+  // double-width. Must match that assumption or powerlineWidth drifts from
+  // the actual rendered width.
+  compatible: { sep: '▶', sepWidth: 2 },
   plain:      { sep: ' ', sepWidth: 1 },
 };
 
@@ -89,8 +93,10 @@ export function powerlineWidth(segments: PowerlineSegment[], style: Style): numb
   let w = bodyW;
   if (style.leftCap) w += 1;
   w += (segments.length - 1) * style.sepWidth;
-  // Terminator glyph — either the style's sep char or the rightCap.
-  w += 1;
+  // Terminator glyph — rightCap is always 1 col (Nerd Font PUA), while sep
+  // can be wider (e.g. `▶` for compatible). Use sepWidth when the terminator
+  // is a sep, otherwise 1.
+  w += style.rightCap ? 1 : style.sepWidth;
   return w;
 }
 
@@ -107,10 +113,14 @@ export function applyPriorityEviction(
   const safeCols = Math.max(1, cols - 4);
   let kept = [...segments];
   while (kept.length > 1 && powerlineWidth(kept, style) > safeCols) {
-    // Find lowest-priority segment and drop it (preserves insertion order of rest).
-    let lowestIdx = 0;
-    let lowest = kept[0].priority;
-    for (let i = 1; i < kept.length; i++) {
+    // Find lowest-priority segment, scanning right-to-left so ties resolve in
+    // favour of earlier-inserted (higher-importance) segments. With strict `<`
+    // and a left-to-right scan, equal priorities would drop the model first —
+    // violating the exported contract that the highest-priority segment is
+    // preserved.
+    let lowestIdx = kept.length - 1;
+    let lowest = kept[lowestIdx].priority;
+    for (let i = kept.length - 2; i >= 0; i--) {
       if (kept[i].priority < lowest) { lowest = kept[i].priority; lowestIdx = i; }
     }
     kept.splice(lowestIdx, 1);
@@ -118,8 +128,20 @@ export function applyPriorityEviction(
   // If still over budget with one segment, truncate its text.
   if (kept.length === 1 && powerlineWidth(kept, style) > safeCols) {
     const seg = kept[0];
-    const budget = Math.max(1, safeCols - (style.leftCap ? 1 : 0) - 1 - 2 - (seg.icon ? displayWidth(seg.icon) + 1 : 0));
-    kept = [{ ...seg, text: truncField(seg.text, budget) }];
+    // Chrome = fixed cost the style adds around segment content. Must match
+    // `powerlineWidth` for a one-segment case, otherwise the truncated result
+    // can still exceed safeCols by one column (notably for diamond, which has
+    // two caps vs arrow's single terminator).
+    const terminatorW = style.rightCap ? 1 : style.sepWidth;
+    const chrome = style.gap
+      ? 2 /* leftCap + rightCap */ + 2 /* padding */
+      : (style.leftCap ? 1 : 0) + terminatorW + 2 /* padding */;
+    const iconCost = seg.icon ? displayWidth(seg.icon) + 1 : 0;
+    const budget = Math.max(1, safeCols - chrome - iconCost);
+    // Strip ANSI/OSC 8 wrappers before truncating — truncField iterates raw
+    // code points and would otherwise cut mid-escape. Safe on plain strings
+    // too (stripAnsi is a no-op when no escapes are present).
+    kept = [{ ...seg, text: truncField(stripAnsi(seg.text), budget) }];
   }
   return kept;
 }
