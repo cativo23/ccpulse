@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-23
+
+### Added
+- **Two new themes: `gruvbox` and `solarized`** — both among the most-requested palettes. Catalog is now at 7 themes.
+- **Actionable context hints** — `/compact?` (dim) at ≥80% context fill, `/compact!` (red) at ≥90%, nudging the user to reclaim context before the session stalls. Opt out via the new `showHint: false` option on `buildContextBar`. The `minimal` preset opts out automatically to preserve its tight single-line budget.
+
+### Changed
+- **Themes now work in 256-color terminals.** Previously `resolveTheme` returned null for any mode other than truecolor, silently disabling themes for users on VS Code terminal, tmux without `-2`, or SSH without `COLORTERM=truecolor`. Palettes now project each RGB value to the nearest xterm 256-color cube index (standard Chalk/ansi-styles algorithm). Named-ANSI mode still returns null by design — 8 base hues are not enough fidelity to honour a theme accurately.
+- **GSD integration rewritten** to match the current `get-shit-done` state layout:
+  - Update cache read from shared `~/.cache/gsd/gsd-update-check.json` (GSD #1421's tool-agnostic location), with legacy `~/.claude/cache/` fallback.
+  - Current task is now derived from walking up from `cwd` looking for `.planning/STATE.md`, parsing the YAML frontmatter + `Phase: N of M (name)` line. Formatted as `milestone · status · phase (N/M)`.
+  - `getGsdInfo` signature changed from `(session, claudeDir?)` to `(cwd, opts?)` with `claudeDir` and `sharedCacheFile` as test overrides.
+
 ## [0.3.2] - 2026-04-23
 
 ### Security
@@ -162,7 +175,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GSD session IDs sanitized against path traversal
 - `execFile` used instead of `exec` to prevent shell injection (except terminal width detection where shell redirect is required with procfs-sourced paths)
 
-[Unreleased]: https://github.com/cativo23/lumira/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/cativo23/lumira/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/cativo23/lumira/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/cativo23/lumira/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/cativo23/lumira/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/cativo23/lumira/compare/v0.2.2...v0.3.0
