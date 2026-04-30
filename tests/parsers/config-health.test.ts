@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { getConfigHealth } from '../../src/parsers/config-health.js';
 import type { HudConfig } from '../../src/types.js';
 import { DEFAULT_DISPLAY } from '../../src/types.js';
@@ -51,11 +54,36 @@ describe('getConfigHealth', () => {
     expect(hints).toHaveLength(0);
   });
 
-  it('no gsd hint when STATE.md exists', () => {
-    // Use the actual lumira project dir which has .planning/STATE.md if it exists,
-    // otherwise just verify no crash on a real path.
-    const config = { ...baseConfig, gsd: true };
-    // Should not throw regardless of whether STATE.md exists
-    expect(() => getConfigHealth(config, 'truecolor', process.cwd())).not.toThrow();
+  describe('GSD STATE.md walk', () => {
+    let dir: string;
+    beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'cc-health-')); });
+    afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+
+    it('no gsd hint when STATE.md exists at cwd', () => {
+      mkdirSync(join(dir, '.planning'), { recursive: true });
+      writeFileSync(join(dir, '.planning', 'STATE.md'), '# state');
+      const config = { ...baseConfig, gsd: true };
+      expect(getConfigHealth(config, 'truecolor', dir)).toHaveLength(0);
+    });
+
+    it('no gsd hint when STATE.md is in an ancestor (walk ascends correctly)', () => {
+      mkdirSync(join(dir, '.planning'), { recursive: true });
+      writeFileSync(join(dir, '.planning', 'STATE.md'), '# state');
+      const nested = join(dir, 'a', 'b', 'c');
+      mkdirSync(nested, { recursive: true });
+      const config = { ...baseConfig, gsd: true };
+      // Pre-fix this would emit the "no STATE.md" hint because join(dir,'..')
+      // never resolves and the walk silently bails after 10 iterations.
+      expect(getConfigHealth(config, 'truecolor', nested)).toHaveLength(0);
+    });
+
+    it('emits gsd hint when no STATE.md exists in any ancestor', () => {
+      const nested = join(dir, 'a', 'b');
+      mkdirSync(nested, { recursive: true });
+      const config = { ...baseConfig, gsd: true };
+      const hints = getConfigHealth(config, 'truecolor', nested);
+      expect(hints).toHaveLength(1);
+      expect(hints[0].hint).toContain('GSD');
+    });
   });
 });

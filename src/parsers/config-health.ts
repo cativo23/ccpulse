@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { HudConfig } from '../types.js';
 import type { ColorMode } from '../render/colors.js';
 
@@ -23,13 +23,16 @@ export function getConfigHealth(config: HudConfig, colorMode: ColorMode, cwd: st
     hints.push({ severity: 'warn', hint: 'powerline falling back to classic (named-ANSI)' });
   }
 
-  // GSD enabled but no STATE.md found walking up from cwd
+  // GSD enabled but no STATE.md found walking up from cwd.
+  // Use `dirname` (resolves), not `join(dir, '..')` (which appends literal `..`
+  // and never reaches root — so the equality break never fires and the loop
+  // would silently bail at the iteration cap on deeply-nested projects).
   if (config.gsd && cwd) {
     let found = false;
     let dir = cwd;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 32; i++) {
       if (existsSync(join(dir, '.planning', 'STATE.md'))) { found = true; break; }
-      const parent = join(dir, '..');
+      const parent = dirname(dir);
       if (parent === dir) break;
       dir = parent;
     }
