@@ -78,7 +78,10 @@ if (isDirectRun()) {
     const o = uninstall();
     process.stdout.write(o);
   } else if (cmd === 'themes') {
-    process.stdout.write(runThemesCommand(process.argv));
+    const r = runThemesCommand(process.argv, process.stdout.columns);
+    if (r.stdout) process.stdout.write(r.stdout);
+    if (r.stderr) process.stderr.write(r.stderr);
+    if (r.exitCode !== 0) process.exit(r.exitCode);
   } else {
     main().then(o => process.stdout.write(o)).catch(e => { if (!(e instanceof SyntaxError)) process.stderr.write(`Statusline error: ${e.message}\n`); });
   }

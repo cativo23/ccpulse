@@ -1,18 +1,43 @@
-import { THEMES, THEME_DESCRIPTIONS } from '../themes.js';
+import { THEMES } from '../themes.js';
 import { buildPreview, type PreviewOpts } from '../tui/preview.js';
 import { detectColorMode } from '../render/colors.js';
-import type { HudConfig } from '../types.js';
+import { sanitizeTermString } from '../normalize.js';
+import { POWERLINE_STYLE_NAMES, type HudConfig, type PowerlineStyleName } from '../types.js';
 
-const VALID_POWERLINE_STYLES = [
-  'arrow', 'flame', 'slant', 'round', 'diamond', 'compatible', 'plain', 'auto',
-] as const;
+/**
+ * One-line descriptions for `lumira themes list`. Lives next to the only
+ * consumer rather than in `themes.ts` so the renderer's module graph
+ * doesn't pull these strings.
+ */
+const THEME_DESCRIPTIONS: Record<string, string> = {
+  dracula: 'vampire dark — purple/pink accents',
+  nord: 'arctic muted polar palette',
+  'tokyo-night': 'Tokyo at night — purple/blue, high contrast',
+  catppuccin: 'pastel mocha — warm soft colors',
+  monokai: 'classic high-saturation dark',
+  gruvbox: 'retro warm earth tones',
+  solarized: 'accessibility-focused, high readability',
+};
 
 interface ThemesArgs {
   sub: 'list' | 'preview' | 'help';
   themeName?: string;
   powerline: boolean;
-  powerlineStyle?: NonNullable<HudConfig['powerline']>['style'];
+  powerlineStyle?: PowerlineStyleName;
   all: boolean;
+}
+
+/**
+ * Result of invoking the themes subcommand. Caller (typically `index.ts`)
+ * is responsible for writing each stream to the right fd and exiting with
+ * the indicated code. Splitting this out (vs returning a plain string)
+ * lets pipe / redirection workflows (`2>/dev/null`, `| grep`) work as
+ * users expect, and lets shell scripts detect failure via `$?`.
+ */
+export interface ThemesCommandResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
 }
 
 export function parseThemesArgs(argv: string[]): ThemesArgs {
@@ -26,7 +51,7 @@ export function parseThemesArgs(argv: string[]): ThemesArgs {
 
   let themeName: string | undefined;
   let powerline = false;
-  let powerlineStyle: ThemesArgs['powerlineStyle'];
+  let powerlineStyle: PowerlineStyleName | undefined;
   let all = false;
 
   for (let i = 4; i < argv.length; i++) {
@@ -34,11 +59,14 @@ export function parseThemesArgs(argv: string[]): ThemesArgs {
     if (arg === '--powerline') { powerline = true; continue; }
     if (arg === '--all') { all = true; continue; }
     const styleMatch = arg.match(/^--style=(.+)$/);
-    if (styleMatch && VALID_POWERLINE_STYLES.includes(styleMatch[1] as never)) {
+    if (styleMatch && POWERLINE_STYLE_NAMES.includes(styleMatch[1] as never)) {
       powerline = true;
-      powerlineStyle = styleMatch[1] as NonNullable<HudConfig['powerline']>['style'];
+      powerlineStyle = styleMatch[1] as PowerlineStyleName;
       continue;
     }
+    // Unknown --flag is silently ignored to stay forward-compatible if a
+    // future minor adds a new flag and an old binary sees it. Positional
+    // tokens become themeName (first non-flag wins).
     if (!arg.startsWith('--') && !themeName) {
       themeName = arg;
     }
@@ -76,17 +104,18 @@ function helpText(): string {
     `  ${Object.keys(THEMES).join(', ')}`,
     '',
     'POWERLINE STYLES',
-    `  ${VALID_POWERLINE_STYLES.join(', ')}`,
+    `  ${POWERLINE_STYLE_NAMES.join(', ')}`,
     '',
   ].join('\n');
 }
 
-function previewBlock(name: string, args: ThemesArgs): string {
+function previewBlock(name: string, args: ThemesArgs, cols: number): string {
   const opts: PreviewOpts = {
     preset: 'full',
     theme: name,
     icons: 'nerd',
     colorMode: detectColorMode(),
+    cols,
   };
   if (args.powerline) {
     opts.style = 'powerline';
@@ -96,31 +125,62 @@ function previewBlock(name: string, args: ThemesArgs): string {
   return `${banner}\n${buildPreview(opts)}\n`;
 }
 
-/**
- * Returns the rendered output for `lumira themes [...]`. Caller is responsible
- * for writing to stdout. Returns an empty string only on internal failure.
- */
-export function runThemesCommand(argv: string[]): string {
-  const args = parseThemesArgs(argv);
+/** Reject themes lookups that would otherwise bypass the unknown-theme guard
+ * via prototype chain (`__proto__`, `constructor`, etc). */
+function isKnownTheme(name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(THEMES, name);
+}
 
-  if (args.sub === 'help') return helpText();
-  if (args.sub === 'list') return listText();
+function ok(stdout: string): ThemesCommandResult {
+  return { stdout, stderr: '', exitCode: 0 };
+}
+
+function err(stderr: string): ThemesCommandResult {
+  return { stdout: '', stderr, exitCode: 1 };
+}
+
+/**
+ * Returns the rendered output for `lumira themes [...]` along with a
+ * separate stderr buffer and an exit code. The caller wires these to the
+ * right streams and exits the process accordingly.
+ *
+ * The optional `cols` argument is the terminal width to render previews at;
+ * defaults to 120 when stdout has no detectable column count (e.g. piped).
+ */
+export function runThemesCommand(argv: string[], cols?: number): ThemesCommandResult {
+  const args = parseThemesArgs(argv);
+  const previewCols = cols ?? 120;
+
+  if (args.sub === 'help') return ok(helpText());
+  if (args.sub === 'list') return ok(listText());
 
   // sub === 'preview'
   if (args.all) {
-    return Object.keys(THEMES).map(n => previewBlock(n, args)).join('\n');
+    return ok(Object.keys(THEMES).map(n => previewBlock(n, args, previewCols)).join('\n'));
   }
 
   if (!args.themeName) {
-    return 'lumira themes preview: missing theme name.\n\n'
+    return err(
+      'lumira themes preview: missing theme name.\n\n'
       + "Use 'lumira themes list' to see available themes,\n"
-      + "or 'lumira themes preview --all' to render all of them.\n";
+      + "or 'lumira themes preview --all' to render all of them.\n",
+    );
   }
 
-  if (!THEMES[args.themeName]) {
-    return `lumira themes preview: unknown theme "${args.themeName}".\n\n`
-      + `Available: ${Object.keys(THEMES).join(', ')}\n`;
+  // Sanitize for the error banner: a malicious shell alias could pass an
+  // argv containing terminal control sequences which would render directly
+  // into the user's terminal otherwise.
+  const safeName = sanitizeTermString(args.themeName);
+
+  if (!isKnownTheme(args.themeName)) {
+    return err(
+      `lumira themes preview: unknown theme "${safeName}".\n\n`
+      + `Available: ${Object.keys(THEMES).join(', ')}\n`,
+    );
   }
 
-  return previewBlock(args.themeName, args);
+  return ok(previewBlock(args.themeName, args, previewCols));
 }
+
+// Re-export PowerlineStyleName so callers don't have to import it from types.
+export type { PowerlineStyleName, HudConfig };
