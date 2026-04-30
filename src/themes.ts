@@ -248,6 +248,21 @@ export function getThemeNames(): string[] {
   return Object.keys(THEMES);
 }
 
+/**
+ * One-line descriptions for the `lumira themes list` subcommand. Kept
+ * separate from THEMES so the renderer doesn't pull strings into the hot
+ * path; only the themes subcommand reads this map.
+ */
+export const THEME_DESCRIPTIONS: Record<string, string> = {
+  dracula: 'vampire dark — purple/pink accents',
+  nord: 'arctic muted polar palette',
+  'tokyo-night': 'Tokyo at night — purple/blue, high contrast',
+  catppuccin: 'pastel mocha — warm soft colors',
+  monokai: 'classic high-saturation dark',
+  gruvbox: 'retro warm earth tones',
+  solarized: 'accessibility-focused, high readability',
+};
+
 /** Darken an RGB triple toward black by `factor` in [0,1]. */
 function darken(c: RGB, factor: number): RGB {
   return {
