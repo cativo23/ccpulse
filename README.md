@@ -8,13 +8,26 @@ Real-time statusline plugin for [Claude Code](https://code.claude.com) and Qwen 
 
 [![npm version](https://img.shields.io/npm/v/lumira?color=cb3837&logo=npm)](https://www.npmjs.com/package/lumira)
 [![npm downloads](https://img.shields.io/npm/dw/lumira?color=cb3837&logo=npm&label=downloads%2Fweek)](https://www.npmjs.com/package/lumira)
+[![License: MIT](https://img.shields.io/npm/l/lumira?color=blue)](LICENSE)
 ![Node](https://img.shields.io/node/v/lumira)
-![License](https://img.shields.io/npm/l/lumira)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![Dependencies](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
+[![CI](https://github.com/cativo23/lumira/actions/workflows/ci.yml/badge.svg)](https://github.com/cativo23/lumira/actions/workflows/ci.yml)
 ![Claude Code](https://img.shields.io/badge/Claude_Code-compatible-2d3748?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+PHBhdGggZD0iTTY0IDEyOEMzNS44IDEyOCAxMyAxMDUuMiAxMyA3N0MxMyA0OC44IDM1LjggMjYgNjQgMjZjMjguMiAwIDUxIDIyLjggNTEgNTFzLTIyLjggNTEtNTEgNTF6IiBmaWxsPSIjMjQyNTJGIi8+PC9zdmc+)
 ![Qwen Code](https://img.shields.io/badge/Qwen_Code-compatible-6156FF)
-![Tests](https://github.com/cativo23/lumira/actions/workflows/ci.yml/badge.svg)
-![Dependencies](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
+
+## Table of contents
+
+- [Features](#features)
+- [Install](#install)
+- [Display modes](#display)
+- [Configuration](#configuration)
+- [Powerline](#powerline)
+- [Themes](#themes)
+- [Architecture](#architecture)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -244,10 +257,18 @@ Set `LUMIRA_DEBUG=1` to trace parser decisions on stderr — cache hits, GSD sta
 LUMIRA_DEBUG=1 claude    # or export LUMIRA_DEBUG=1
 ```
 
+## Contributing
+
+PRs welcome — particularly for new themes (one of the most common contribution paths). See [CONTRIBUTING.md](CONTRIBUTING.md) for the gitflow, theme submission walkthrough, and the contrast-guard CI step that runs on every theme PR.
+
+For security issues, see [SECURITY.md](SECURITY.md). For the roadmap, see [issue #36](https://github.com/cativo23/lumira/issues/36).
+
 ## Credits
 
 Inspired by [claude-hud](https://github.com/jarrodwatts/claude-hud). Migrated from [claude-setup](https://github.com/cativo23/claude-setup) statusline.
 
+Theme palettes drawn from upstream specs: [Dracula](https://draculatheme.com), [Nord](https://www.nordtheme.com), [Tokyo Night](https://github.com/folke/tokyonight.nvim), [Catppuccin](https://catppuccin.com), [Monokai](https://monokai.pro), [Gruvbox](https://github.com/morhetz/gruvbox), [Solarized](https://ethanschoonover.com/solarized).
+
 ## License
 
-MIT
+MIT © [Carlos Cativo](https://github.com/cativo23) — see [LICENSE](LICENSE) for the full text.
