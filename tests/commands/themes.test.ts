@@ -148,6 +148,14 @@ describe('runThemesCommand — preview', () => {
     expect(r.stderr).toContain('unknown theme');
   });
 
+  it('rejects toString as theme name (full prototype guard)', () => {
+    // The hasOwn guard is exhaustive across the prototype chain — verify
+    // one more inherited member to lock the behavior.
+    const r = runThemesCommand(argv('preview', 'toString'));
+    expect(r.exitCode).toBe(1);
+    expect(r.stderr).toContain('unknown theme');
+  });
+
   it('strips terminal control chars from invalid theme name in error banner', () => {
     const evil = '\x1b[2J\x1b[H';
     const r = runThemesCommand(argv('preview', evil));

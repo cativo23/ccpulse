@@ -140,7 +140,10 @@ export function mergeCliFlags(config: HudConfig, argv: string[]): HudConfig {
     if (iconsMatch) { r.icons = iconsMatch[1] as HudConfig['icons']; continue; }
     // Build the alternation from POWERLINE_STYLE_NAMES so this regex stays
     // in sync when a new style is added — single source of truth in types.ts.
-    const plStyleMatch = arg.match(new RegExp(`^--powerline-style[= ](${POWERLINE_STYLE_NAMES.join('|')})$`));
+    // Escape regex metacharacters defensively in case a future style name
+    // ever contains one (today they're all `[a-z]+`, but the safety is free).
+    const escaped = POWERLINE_STYLE_NAMES.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const plStyleMatch = arg.match(new RegExp(`^--powerline-style[= ](${escaped.join('|')})$`));
     if (plStyleMatch) {
       r.style = 'powerline';
       r.powerline = { ...(r.powerline ?? {}), style: plStyleMatch[1] as NonNullable<HudConfig['powerline']>['style'] };

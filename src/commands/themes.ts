@@ -149,7 +149,11 @@ function err(stderr: string): ThemesCommandResult {
  */
 export function runThemesCommand(argv: string[], cols?: number): ThemesCommandResult {
   const args = parseThemesArgs(argv);
-  const previewCols = cols ?? 120;
+  // Floor the preview width at 40 cols so a pathological `tput cols` of 1
+  // (or a piped output that erroneously passes 0) doesn't produce empty
+  // line truncations. 40 is the narrowest width any built-in renderer
+  // claims to support cleanly.
+  const previewCols = Math.max(40, cols ?? 120);
 
   if (args.sub === 'help') return ok(helpText());
   if (args.sub === 'list') return ok(listText());
