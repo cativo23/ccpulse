@@ -16,7 +16,7 @@
  * is unchanged so the statusline still renders normally during capture.
  */
 
-import { mkdirSync, createWriteStream } from 'node:fs';
+import { mkdirSync, createWriteStream, copyFileSync, existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,8 +24,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LUMIRA = join(__dirname, '..', 'dist', 'index.js');
 const CAPTURE_DIR = process.env['LUMIRA_CAPTURE_DIR'] ?? '/tmp/lumira-capture';
+const TRANSCRIPT_DIR = join(CAPTURE_DIR, 'transcripts');
 
 mkdirSync(CAPTURE_DIR, { recursive: true });
+mkdirSync(TRANSCRIPT_DIR, { recursive: true });
 
 const ts = `${Date.now()}-${process.pid}`;
 const captureFile = join(CAPTURE_DIR, `${ts}.json`);
@@ -34,10 +36,29 @@ let buf = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { buf += chunk; });
 process.stdin.on('end', () => {
-  // Persist the raw payload for the demo builder.
+  // Snapshot the transcript file alongside the payload, then rewrite the
+  // payload's transcript_path to point at the snapshot. Without this the
+  // demo builder reads the live transcript (which keeps growing) and every
+  // frame shows the same "current" tools/todos instead of the state that
+  // was active at capture time.
+  let toWrite = buf;
+  try {
+    const payload = JSON.parse(buf);
+    const tp = payload.transcript_path;
+    if (tp && existsSync(tp)) {
+      const snapPath = join(TRANSCRIPT_DIR, `${ts}.jsonl`);
+      copyFileSync(tp, snapPath);
+      payload.transcript_path = snapPath;
+      toWrite = JSON.stringify(payload);
+    }
+  } catch {
+    // Best-effort: if snapshotting fails for any reason, fall back to the
+    // raw payload so capture still happens.
+  }
+
   try {
     const out = createWriteStream(captureFile);
-    out.write(buf);
+    out.write(toWrite);
     out.end();
   } catch {
     // Capture is best-effort; failing here must never break the statusline.
