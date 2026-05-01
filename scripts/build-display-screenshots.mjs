@@ -7,8 +7,8 @@
  * config, parse ANSI to HTML, capture via chrome headless, auto-trim.
  */
 
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -152,12 +152,16 @@ function makePayload() {
 }
 
 function renderWithConfig(payloadJson, configObj, cols = 130) {
-  const tmpHome = `/tmp/lumira-display-${Date.now()}`;
+  const tmpHome = `/tmp/lumira-display-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const cfgDir = `${tmpHome}/.config/lumira`;
   mkdirSync(cfgDir, { recursive: true });
   writeFileSync(`${cfgDir}/config.json`, JSON.stringify(configObj));
   const env = { ...process.env, HOME: tmpHome, COLORTERM: 'truecolor', FORCE_HYPERLINK: '0', COLUMNS: String(cols) };
-  return execFileSync('node', [join(ROOT, 'dist', 'index.js')], { input: payloadJson, env, encoding: 'utf8' });
+  try {
+    return execFileSync('node', [join(ROOT, 'dist', 'index.js')], { input: payloadJson, env, encoding: 'utf8' });
+  } finally {
+    rmSync(tmpHome, { recursive: true, force: true });
+  }
 }
 
 const OUT = join(ROOT, 'assets', 'showcase');
@@ -173,8 +177,4 @@ for (const [name, { config }] of Object.entries(CONFIGS)) {
   console.log(`wrote ${name}.html`);
 }
 
-// Capture with chrome
-const PORT = 8765;
-const server = spawnSync('python3', ['-m', 'http.server', String(PORT), '--directory', OUT, '--bind', '127.0.0.1'], { detached: true, stdio: 'ignore' });
-// Server above won't return; spawn it differently
-console.log('Starting local http server (run scripts/capture-display.sh to render to PNG)');
+console.log('Done. Run scripts/capture-display.sh to render the HTML to PNG.');

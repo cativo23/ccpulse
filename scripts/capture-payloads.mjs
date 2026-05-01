@@ -18,7 +18,8 @@
 
 import { mkdirSync, createWriteStream, copyFileSync, existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -26,8 +27,8 @@ const LUMIRA = join(__dirname, '..', 'dist', 'index.js');
 const CAPTURE_DIR = process.env['LUMIRA_CAPTURE_DIR'] ?? '/tmp/lumira-capture';
 const TRANSCRIPT_DIR = join(CAPTURE_DIR, 'transcripts');
 
-mkdirSync(CAPTURE_DIR, { recursive: true });
-mkdirSync(TRANSCRIPT_DIR, { recursive: true });
+mkdirSync(CAPTURE_DIR, { recursive: true, mode: 0o700 });
+mkdirSync(TRANSCRIPT_DIR, { recursive: true, mode: 0o700 });
 
 const ts = `${Date.now()}-${process.pid}`;
 const captureFile = join(CAPTURE_DIR, `${ts}.json`);
@@ -36,6 +37,12 @@ let buf = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { buf += chunk; });
 process.stdin.on('end', () => {
+  // Skip empty pings — they happen during Claude Code restarts and only
+  // pollute the capture dir.
+  if (!buf.trim()) {
+    process.exit(0);
+  }
+
   // Snapshot the transcript file alongside the payload, then rewrite the
   // payload's transcript_path to point at the snapshot. Without this the
   // demo builder reads the live transcript (which keeps growing) and every
@@ -46,10 +53,17 @@ process.stdin.on('end', () => {
     const payload = JSON.parse(buf);
     const tp = payload.transcript_path;
     if (tp && existsSync(tp)) {
-      const snapPath = join(TRANSCRIPT_DIR, `${ts}.jsonl`);
-      copyFileSync(tp, snapPath);
-      payload.transcript_path = snapPath;
-      toWrite = JSON.stringify(payload);
+      // Mirror lumira's own gate: only snapshot transcripts that resolve
+      // under $HOME or /tmp. Defense-in-depth — without this guard a
+      // payload pointing at /etc/passwd would be eagerly copied into the
+      // capture dir.
+      const resolved = resolve(tp);
+      if (resolved.startsWith(homedir()) || resolved.startsWith(tmpdir())) {
+        const snapPath = join(TRANSCRIPT_DIR, `${ts}.jsonl`);
+        copyFileSync(tp, snapPath);
+        payload.transcript_path = snapPath;
+        toWrite = JSON.stringify(payload);
+      }
     }
   } catch {
     // Best-effort: if snapshotting fails for any reason, fall back to the
