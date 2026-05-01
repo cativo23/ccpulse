@@ -2,7 +2,7 @@
 
 Real-time statusline plugin for [Claude Code](https://code.claude.com) and Qwen Code.
 
-![lumira statusline — tokyo-night theme](https://raw.githubusercontent.com/cativo23/lumira/main/assets/showcase/hero-5-2.png)
+![lumira statusline — tokyo-night theme](assets/showcase/hero-5-2.png)
 
 [![asciicast — context bar filling, tools active, GSD widget](https://asciinema.org/a/apvjkloigO9hrdVA.svg)](https://asciinema.org/a/apvjkloigO9hrdVA)
 
@@ -141,15 +141,15 @@ If installed from source:
 
 ### Custom Mode (default, >=70 columns)
 
-![custom mode — 3 lines: model + git + dir + version, context bar + tokens + cost + time, tools + todos](https://raw.githubusercontent.com/cativo23/lumira/main/assets/showcase/mode-custom.png)
+![custom mode — 3 lines: model + git + dir + version, context bar + tokens + cost + time, tools + todos](assets/showcase/mode-custom.png)
 
 ### Minimal Mode (<70 columns or `--minimal`)
 
-![minimal mode — single line: dir + branch + model + bar + tokens + cost](https://raw.githubusercontent.com/cativo23/lumira/main/assets/showcase/mode-minimal.png)
+![minimal mode — single line: dir + branch + model + bar + tokens + cost](assets/showcase/mode-minimal.png)
 
 ### Powerline Mode (opt-in via `style: "powerline"`)
 
-![powerline mode — same content with arrow separators and per-segment backgrounds](https://raw.githubusercontent.com/cativo23/lumira/main/assets/showcase/mode-powerline.png)
+![powerline mode — same content with arrow separators and per-segment backgrounds](assets/showcase/mode-powerline.png)
 
 Each segment renders with a distinct background color drawn from the active theme; segments are separated by a Nerd Font glyph (default ``). On dirty git repos the branch segment turns red. Falls back to classic mode silently in named-ANSI terminals (powerline needs RGB backgrounds). See [Powerline](#powerline) below for the 7 separator styles.
 
@@ -161,7 +161,7 @@ Seven hand-curated themes, every one tested for WCAG AA contrast against white f
 
 | Classic mode | Powerline mode |
 |---|---|
-| <img src="https://raw.githubusercontent.com/cativo23/lumira/main/assets/showcase/themes-gallery-classic.png" alt="all 7 themes in classic mode" width="500" /> | <img src="https://raw.githubusercontent.com/cativo23/lumira/main/assets/showcase/themes-gallery-powerline.png" alt="all 7 themes in powerline mode" width="500" /> |
+| <img src="assets/showcase/themes-gallery-classic.png" alt="all 7 themes in classic mode" width="500" /> | <img src="assets/showcase/themes-gallery-powerline.png" alt="all 7 themes in powerline mode" width="500" /> |
 
 Themes apply in truecolor and 256-color terminals; named-ANSI terminals fall back to default colors (8 base hues can't represent arbitrary palettes).
 
