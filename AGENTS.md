@@ -8,7 +8,7 @@
 
 - **Type:** TypeScript CLI tool (statusline renderer)
 - **License:** MIT
-- **Node:** >= 22.14.0
+- **Node:** >= 18 (matches `engines.node` in `package.json`)
 
 ## Setup & Dev Environment
 
@@ -70,33 +70,30 @@ npm run lint
 
 ## PR & Commit Guidelines
 
-- **Branches:** `main` (stable), `develop` (integration), `feat/*`, `fix/*`
+- **Branches:** single trunk `main`. Topic branches: `feature/*`, `fix/*`, `docs/*`, `refactor/*`.
 - **Commits:** One concern per commit, imperative mood ("feat: add Qwen support")
-- **PRs:** Merge to `develop` via squash merge
+- **PRs:** target `main`. Merge method is up to the maintainer (squash for trivial fixes, merge commit for multi-step features).
 - **Pre-commit:** Always run `npm test` and `npm run build` before committing
 - **PR title format:** `type(scope): description` (conventional commits)
 
 ## Deployment
 
 Releases are fully automated by `.github/workflows/release.yml`. The workflow
-triggers when a `release/vX.Y.Z` branch is merged into `main`, then:
-parses the version from the branch name → creates the git tag → publishes
-the GitHub Release with notes from CHANGELOG.md → runs `npm publish`.
+triggers on `push: tags: [v*]` — once a `vX.Y.Z` tag lands on the remote it
+parses the version from `github.ref_name` → publishes the GitHub Release with
+notes from CHANGELOG.md → runs `npm publish`. Tags with a SemVer suffix
+(`v1.0.0-beta.1`) are marked pre-release; the rest are Latest.
 
-**Release process:**
-1. Branch from `develop` → `release/vX.Y.Z`
-2. Bump `package.json` version and move the `[Unreleased]` changelog entries
-   into a new `[X.Y.Z] - YYYY-MM-DD` section. Update the compare links.
-3. Open PR against `main` and use `--merge` (not squash — preserves branch
-   name for workflow detection).
-4. CI takes over: tag + GitHub Release + npm publish happen automatically.
-5. **Post-release: merge `main` back into `develop`.** This is mandatory —
-   without it, `develop` keeps the old version and stale changelog, and the
-   *next* release branch will conflict on every file touched since.
-   ```bash
-   git checkout develop && git pull
-   git merge origin/main --no-edit && git push
-   ```
+**Release process (maintainers only):**
+1. From `main`, after the work is merged: `npm version X.Y.Z --no-git-tag-version`.
+2. Move the `[Unreleased]` changelog entries into a new `[X.Y.Z] - YYYY-MM-DD`
+   section. Update the compare links.
+3. `git commit -am "chore(release): vX.Y.Z"`
+4. `git tag vX.Y.Z && git push origin main --tags`
+5. CI takes over: GitHub Release + npm publish happen automatically.
+
+There is no `develop` branch and no release PR ceremony. The tag is the
+release artifact.
 
 ## Guardrails
 
