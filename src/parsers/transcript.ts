@@ -17,7 +17,54 @@ const log = debug('transcript');
 // TaskUpdate's numeric-taskId index semantics. Each call uses local maps
 // (toolMap, agentMap, todos below) — that locality is what keeps the parser
 // concurrent-tick safe. Don't refactor it into shared mutable state.
-const transcriptCache = new Map<string, { result: TranscriptData; mtime: MtimeState }>();
+//
+// LRU bound: long-running shells switch transcript paths across sessions, so
+// the cache would otherwise grow one entry per session forever (#69). Map
+// iteration order is insertion order, which gives us a free LRU: re-insert
+// on hit to refresh recency, drop the first key when size > cap.
+export const TRANSCRIPT_CACHE_CAP = 10;
+type TranscriptCacheEntry = { result: TranscriptData; mtime: MtimeState };
+const transcriptCache = new Map<string, TranscriptCacheEntry>();
+
+// Shallow clone of TranscriptData so callers can't mutate the cached arrays.
+// IMPORTANT: this is *shallow*. Caller can still mutate per-entry fields
+// (e.g. `result.tools[0].status = 'evil'`) and corrupt the cache. All current
+// renderers (src/render/line1.ts, line3.ts, powerline-line1.ts,
+// powerline-line3.ts) treat entries as read-only — verified by review. If a
+// future consumer mutates per-entry fields, switch to Object.freeze on each
+// entry or to a structuredClone.
+function cloneShallow(result: TranscriptData): TranscriptData {
+  return {
+    ...result,
+    tools: result.tools.slice(),
+    agents: result.agents.slice(),
+    todos: result.todos.slice(),
+  };
+}
+
+function touchCache(key: string, value: TranscriptCacheEntry): void {
+  if (transcriptCache.has(key)) transcriptCache.delete(key);
+  transcriptCache.set(key, value);
+  // Size briefly hits CAP+1 between set() above and delete() below, but
+  // touchCache is synchronous — no await boundary exists here, so no other
+  // code can observe that window. Each call leaves the map at or below cap.
+  if (transcriptCache.size > TRANSCRIPT_CACHE_CAP) {
+    const oldest = transcriptCache.keys().next().value;
+    if (oldest !== undefined) transcriptCache.delete(oldest);
+  }
+}
+
+// Test-only inspectors. Underscore prefix signals "internal" — do not call
+// from production code paths.
+export function _transcriptCacheSize(): number {
+  return transcriptCache.size;
+}
+export function _transcriptCacheKeys(): string[] {
+  return Array.from(transcriptCache.keys());
+}
+export function _clearTranscriptCache(): void {
+  transcriptCache.clear();
+}
 
 const MAX_LINES = 50_000;
 
@@ -51,20 +98,25 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   const result: TranscriptData = { ...EMPTY_TRANSCRIPT, tools: [], agents: [], todos: [] };
   if (!transcriptPath || !existsSync(transcriptPath)) {
     if (log.enabled) log('skip — transcript path missing or nonexistent:', transcriptPath || '(empty)');
+    // File may have been deleted/rotated between calls — drop any stale entry
+    // so the LRU slot doesn't pin an inaccessible path.
+    if (transcriptPath) transcriptCache.delete(resolve(transcriptPath));
     return result;
   }
 
   const resolved = resolve(transcriptPath);
   if (!resolved.startsWith(homedir()) && !resolved.startsWith(tmpdir())) {
     log('skip — path outside allowed roots:', resolved);
+    transcriptCache.delete(resolved);
     return result;
   }
 
-  const currentMtime = getMtimeState(transcriptPath);
+  const currentMtime = getMtimeState(resolved);
   const cached = transcriptCache.get(resolved);
-  if (currentMtime && cached && isMtimeFresh(transcriptPath, cached.mtime)) {
+  if (currentMtime && cached && isMtimeFresh(resolved, cached.mtime)) {
     log('cache hit:', resolved);
-    return cached.result;
+    touchCache(resolved, cached);
+    return cloneShallow(cached.result);
   }
   const parseStart = log.enabled ? Date.now() : 0;
 
@@ -160,7 +212,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   result.todos = todos;
   result.thinkingEffort = thinkingEffort;
   if (currentMtime) {
-    transcriptCache.set(resolved, { result, mtime: currentMtime });
+    touchCache(resolved, { result, mtime: currentMtime });
   }
   if (log.enabled) {
     log('parsed', resolved, {
@@ -171,5 +223,5 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
       durationMs: Date.now() - parseStart,
     });
   }
-  return result;
+  return cloneShallow(result);
 }
