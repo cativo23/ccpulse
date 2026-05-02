@@ -23,16 +23,15 @@ const log = debug('transcript');
 // iteration order is insertion order, which gives us a free LRU: re-insert
 // on hit to refresh recency, drop the first key when size > cap.
 export const TRANSCRIPT_CACHE_CAP = 10;
-const transcriptCache = new Map<string, { result: TranscriptData; mtime: MtimeState }>();
+type TranscriptCacheEntry = { result: TranscriptData; mtime: MtimeState };
+const transcriptCache = new Map<string, TranscriptCacheEntry>();
 
-function touchCache(key: string, value: { result: TranscriptData; mtime: MtimeState }): void {
+function touchCache(key: string, value: TranscriptCacheEntry): void {
   if (transcriptCache.has(key)) transcriptCache.delete(key);
   transcriptCache.set(key, value);
-  // Eviction fires after set, so size briefly hits CAP+1 within this synchronous
-  // call. Concurrent ticks (which can only interleave at await boundaries — JS
-  // is single-threaded) may observe size = CAP+N transiently, but each touchCache
-  // invocation leaves the map in a valid state and last-writer-wins is acceptable
-  // for a cache.
+  // Size briefly hits CAP+1 between set() above and delete() below, but
+  // touchCache is synchronous — no await boundary exists here, so no other
+  // code can observe that window. Each call leaves the map at or below cap.
   if (transcriptCache.size > TRANSCRIPT_CACHE_CAP) {
     const oldest = transcriptCache.keys().next().value;
     if (oldest !== undefined) transcriptCache.delete(oldest);
