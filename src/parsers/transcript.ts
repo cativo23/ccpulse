@@ -26,11 +26,14 @@ export const TRANSCRIPT_CACHE_CAP = 10;
 type TranscriptCacheEntry = { result: TranscriptData; mtime: MtimeState };
 const transcriptCache = new Map<string, TranscriptCacheEntry>();
 
-// Shallow-copy the result so callers can't mutate the cached arrays. Returned
-// to both the hit path and the miss path — the parser's local maps are
-// already discarded after the function returns, but the result object itself
-// would otherwise be shared with the cache.
-function snapshot(result: TranscriptData): TranscriptData {
+// Shallow clone of TranscriptData so callers can't mutate the cached arrays.
+// IMPORTANT: this is *shallow*. Caller can still mutate per-entry fields
+// (e.g. `result.tools[0].status = 'evil'`) and corrupt the cache. All current
+// renderers (src/render/line1.ts, line3.ts, powerline-line1.ts,
+// powerline-line3.ts) treat entries as read-only — verified by review. If a
+// future consumer mutates per-entry fields, switch to Object.freeze on each
+// entry or to a structuredClone.
+function cloneShallow(result: TranscriptData): TranscriptData {
   return {
     ...result,
     tools: result.tools.slice(),
@@ -95,12 +98,16 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   const result: TranscriptData = { ...EMPTY_TRANSCRIPT, tools: [], agents: [], todos: [] };
   if (!transcriptPath || !existsSync(transcriptPath)) {
     if (log.enabled) log('skip — transcript path missing or nonexistent:', transcriptPath || '(empty)');
+    // File may have been deleted/rotated between calls — drop any stale entry
+    // so the LRU slot doesn't pin an inaccessible path.
+    if (transcriptPath) transcriptCache.delete(resolve(transcriptPath));
     return result;
   }
 
   const resolved = resolve(transcriptPath);
   if (!resolved.startsWith(homedir()) && !resolved.startsWith(tmpdir())) {
     log('skip — path outside allowed roots:', resolved);
+    transcriptCache.delete(resolved);
     return result;
   }
 
@@ -109,7 +116,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   if (currentMtime && cached && isMtimeFresh(resolved, cached.mtime)) {
     log('cache hit:', resolved);
     touchCache(resolved, cached);
-    return snapshot(cached.result);
+    return cloneShallow(cached.result);
   }
   const parseStart = log.enabled ? Date.now() : 0;
 
@@ -216,5 +223,5 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
       durationMs: Date.now() - parseStart,
     });
   }
-  return snapshot(result);
+  return cloneShallow(result);
 }

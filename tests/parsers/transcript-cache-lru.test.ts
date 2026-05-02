@@ -65,6 +65,21 @@ describe('transcript cache LRU', () => {
     for (const m of middle) expect(keys).toContain(resolve(m));
   });
 
+  it('exposes cache keys in LRU order (oldest first)', async () => {
+    const { resolve } = await import('node:path');
+    const a = writeFixture('a.jsonl');
+    const b = writeFixture('b.jsonl');
+    const c = writeFixture('c.jsonl');
+    await parseTranscript(a);
+    await parseTranscript(b);
+    await parseTranscript(c);
+    expect(_transcriptCacheKeys()).toEqual([resolve(a), resolve(b), resolve(c)]);
+
+    // Touching `a` should move it to the end.
+    await parseTranscript(a);
+    expect(_transcriptCacheKeys()).toEqual([resolve(b), resolve(c), resolve(a)]);
+  });
+
   it('refreshes recency on cache hit', async () => {
     const { resolve } = await import('node:path');
     const touched = writeFixture('touched.jsonl');
@@ -93,18 +108,39 @@ describe('transcript cache LRU', () => {
     expect(keys).toContain(resolve(newestPath));
   });
 
-  it('returns a defensive copy so caller mutations do not corrupt the cache', async () => {
+  it('returns a fresh array on every call so caller push() does not corrupt the cache', async () => {
+    const { resolve } = await import('node:path');
     const path = writeFixture('shared.jsonl');
     const first = await parseTranscript(path);
 
-    // Caller goes wild: mutates everything they got.
+    // First call was a cache miss; verify it landed in the cache.
+    expect(_transcriptCacheKeys()).toContain(resolve(path));
+
+    // Caller mutates the arrays they were handed.
     first.tools.push({ id: 'fake', name: 'EVIL', target: undefined, status: 'running', startTime: new Date() });
     first.agents.push({ id: 'fake', type: 'EVIL', status: 'running', startTime: new Date() });
     first.todos.push({ id: 'fake', content: 'EVIL', status: 'pending' });
 
+    // Second call hits the cache (same mtime/size). Must return a fresh shallow
+    // clone, not the mutated array from the first call.
     const second = await parseTranscript(path);
     expect(second.tools.find(t => t.id === 'fake')).toBeUndefined();
     expect(second.agents.find(a => a.id === 'fake')).toBeUndefined();
     expect(second.todos.find(t => t.id === 'fake')).toBeUndefined();
+
+    // And the first array is independent of the second array — pushing to one
+    // doesn't appear in the other.
+    expect(second.tools).not.toBe(first.tools);
+  });
+
+  it('drops a cache entry when the underlying file disappears', async () => {
+    const { resolve } = await import('node:path');
+    const path = writeFixture('vanishing.jsonl');
+    await parseTranscript(path);
+    expect(_transcriptCacheKeys()).toContain(resolve(path));
+
+    rmSync(path);
+    await parseTranscript(path);
+    expect(_transcriptCacheKeys()).not.toContain(resolve(path));
   });
 });
