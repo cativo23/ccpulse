@@ -1,6 +1,6 @@
 import { createReadStream, existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import { resolve } from 'node:path';
+import { resolve, relative, isAbsolute } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import type { TranscriptData, ToolEntry, AgentEntry, TodoEntry, TodoStatus, ThinkingEffort } from '../types.js';
 import { EMPTY_TRANSCRIPT } from '../types.js';
@@ -54,6 +54,20 @@ function touchCache(key: string, value: TranscriptCacheEntry): void {
   }
 }
 
+// Returns true if `candidate` is the same as, or a descendant of, any of the
+// `roots`. Uses `path.relative` to avoid the classic `startsWith` bypass where
+// a sibling like `/tmpattacker` would pass `'/tmp'.startsWith()`. Caller is
+// expected to pass an already-resolved absolute path.
+export function isUnderAllowedRoot(candidate: string, roots: readonly string[]): boolean {
+  for (const root of roots) {
+    const normalizedRoot = resolve(root);
+    if (candidate === normalizedRoot) return true;
+    const rel = relative(normalizedRoot, candidate);
+    if (rel && !rel.startsWith('..') && !isAbsolute(rel)) return true;
+  }
+  return false;
+}
+
 // Test-only inspectors. Underscore prefix signals "internal" — do not call
 // from production code paths.
 export function _transcriptCacheSize(): number {
@@ -105,7 +119,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   }
 
   const resolved = resolve(transcriptPath);
-  if (!resolved.startsWith(homedir()) && !resolved.startsWith(tmpdir())) {
+  if (!isUnderAllowedRoot(resolved, [homedir(), tmpdir()])) {
     log('skip — path outside allowed roots:', resolved);
     transcriptCache.delete(resolved);
     return result;
