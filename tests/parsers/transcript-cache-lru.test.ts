@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import {
   parseTranscript,
   _transcriptCacheSize,
+  _transcriptCacheKeys,
   _clearTranscriptCache,
   TRANSCRIPT_CACHE_CAP,
 } from '../../src/parsers/transcript.js';
@@ -38,31 +39,9 @@ describe('transcript cache LRU', () => {
   });
 
   it('evicts the least-recently-used path when cap exceeded', async () => {
+    const { resolve } = await import('node:path');
     const oldestPath = writeFixture('oldest.jsonl');
     await parseTranscript(oldestPath);
-
-    // Fill the rest of the cap with fresh entries.
-    for (let i = 0; i < TRANSCRIPT_CACHE_CAP - 1; i++) {
-      await parseTranscript(writeFixture(`mid${i}.jsonl`));
-    }
-    expect(_transcriptCacheSize()).toBe(TRANSCRIPT_CACHE_CAP);
-
-    // One more entry should evict the oldest, not one of the recent ones.
-    const newestPath = writeFixture('newest.jsonl');
-    await parseTranscript(newestPath);
-
-    expect(_transcriptCacheSize()).toBe(TRANSCRIPT_CACHE_CAP);
-    // Re-parsing the evicted path is allowed (it just rebuilds the cache entry).
-    // The middle and newest entries should remain cached — proven indirectly:
-    // if oldest were still in, the new insert would have pushed the cap over.
-    // Direct check via cache internals would be fragile; this assertion is enough.
-  });
-
-  it('refreshes recency on cache hit', async () => {
-    // Strategy: fill cache to cap. Touch the oldest. Add one more.
-    // If recency was refreshed, the *second-oldest* gets evicted, not the touched one.
-    const touched = writeFixture('touched.jsonl');
-    await parseTranscript(touched);
 
     const middle: string[] = [];
     for (let i = 0; i < TRANSCRIPT_CACHE_CAP - 1; i++) {
@@ -72,15 +51,41 @@ describe('transcript cache LRU', () => {
     }
     expect(_transcriptCacheSize()).toBe(TRANSCRIPT_CACHE_CAP);
 
-    // Touch `touched` again — should move it to most-recent end.
-    await parseTranscript(touched);
-    expect(_transcriptCacheSize()).toBe(TRANSCRIPT_CACHE_CAP);
+    const newestPath = writeFixture('newest.jsonl');
+    await parseTranscript(newestPath);
 
-    // Add one more. middle[0] should be evicted now, not `touched`.
-    await parseTranscript(writeFixture('newest.jsonl'));
+    const keys = _transcriptCacheKeys();
     expect(_transcriptCacheSize()).toBe(TRANSCRIPT_CACHE_CAP);
-    // No direct cache inspection beyond size; the LRU contract is exercised
-    // via the size cap holding throughout. Behavioral correctness is covered
-    // by the eviction test above and the existing parseTranscript test suite.
+    expect(keys).not.toContain(resolve(oldestPath));
+    expect(keys).toContain(resolve(newestPath));
+    for (const m of middle) expect(keys).toContain(resolve(m));
+  });
+
+  it('refreshes recency on cache hit', async () => {
+    const { resolve } = await import('node:path');
+    const touched = writeFixture('touched.jsonl');
+    await parseTranscript(touched);
+
+    const middle: string[] = [];
+    for (let i = 0; i < TRANSCRIPT_CACHE_CAP - 1; i++) {
+      const p = writeFixture(`mid${i}.jsonl`);
+      middle.push(p);
+      await parseTranscript(p);
+    }
+
+    // Re-touch the otherwise-oldest entry → moves it to most-recent end.
+    await parseTranscript(touched);
+
+    const newestPath = writeFixture('newest.jsonl');
+    await parseTranscript(newestPath);
+
+    const keys = _transcriptCacheKeys();
+    expect(_transcriptCacheSize()).toBe(TRANSCRIPT_CACHE_CAP);
+    // The touched entry survived because it was refreshed.
+    expect(keys).toContain(resolve(touched));
+    // middle[0] (the oldest non-touched) was evicted instead.
+    expect(keys).not.toContain(resolve(middle[0]));
+    // The newest entry made it in.
+    expect(keys).toContain(resolve(newestPath));
   });
 });

@@ -28,6 +28,11 @@ const transcriptCache = new Map<string, { result: TranscriptData; mtime: MtimeSt
 function touchCache(key: string, value: { result: TranscriptData; mtime: MtimeState }): void {
   if (transcriptCache.has(key)) transcriptCache.delete(key);
   transcriptCache.set(key, value);
+  // Eviction fires after set, so size briefly hits CAP+1 within this synchronous
+  // call. Concurrent ticks (which can only interleave at await boundaries — JS
+  // is single-threaded) may observe size = CAP+N transiently, but each touchCache
+  // invocation leaves the map in a valid state and last-writer-wins is acceptable
+  // for a cache.
   if (transcriptCache.size > TRANSCRIPT_CACHE_CAP) {
     const oldest = transcriptCache.keys().next().value;
     if (oldest !== undefined) transcriptCache.delete(oldest);
@@ -38,6 +43,9 @@ function touchCache(key: string, value: { result: TranscriptData; mtime: MtimeSt
 // from production code paths.
 export function _transcriptCacheSize(): number {
   return transcriptCache.size;
+}
+export function _transcriptCacheKeys(): string[] {
+  return Array.from(transcriptCache.keys());
 }
 export function _clearTranscriptCache(): void {
   transcriptCache.clear();
