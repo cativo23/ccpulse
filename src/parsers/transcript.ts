@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, realpathSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
@@ -6,6 +6,7 @@ import type { TranscriptData, ToolEntry, AgentEntry, TodoEntry, TodoStatus, Thin
 import { EMPTY_TRANSCRIPT } from '../types.js';
 import { isMtimeFresh, getMtimeState, type MtimeState } from '../utils/cache.js';
 import { sanitizeTermString } from '../normalize.js';
+import { isUnderAllowedRoot } from '../utils/path.js';
 import { debug } from '../utils/debug.js';
 
 const log = debug('transcript');
@@ -94,6 +95,32 @@ export function extractToolTarget(toolName: string, input: Record<string, unknow
   return typeof raw === 'string' ? sanitizeTermString(raw) : raw;
 }
 
+// Allowed roots, snapshotted once at module load. We include both the
+// as-returned form and the realpath form of homedir()/tmpdir() so platforms
+// like macOS work transparently — `os.tmpdir()` returns `/var/folders/...`
+// while the kernel realpath is `/private/var/folders/...`. Either form on
+// the candidate side will match.
+//
+// We deliberately do NOT realpath the candidate path inside parseTranscript:
+// (a) it would 5–10× the syscalls on the cache hit path, and
+// (b) it would break legitimate user setups like `~/.claude → /data/claude`,
+//     where the canonical target sits outside `homedir()`.
+// Symlink-traversal hardening (defense against attacker-placed symlinks
+// under an allowed root pointing at /etc/passwd) is tracked separately;
+// the threat is narrow because `transcript_path` arrives from Claude Code
+// itself, not arbitrary external input.
+function realpathSafe(p: string): string {
+  try { return realpathSync(p); } catch { return resolve(p); }
+}
+const ALLOWED_ROOTS: readonly string[] = [
+  ...new Set([
+    resolve(homedir()),
+    resolve(tmpdir()),
+    realpathSafe(homedir()),
+    realpathSafe(tmpdir()),
+  ]),
+];
+
 export async function parseTranscript(transcriptPath: string): Promise<TranscriptData> {
   const result: TranscriptData = { ...EMPTY_TRANSCRIPT, tools: [], agents: [], todos: [] };
   if (!transcriptPath || !existsSync(transcriptPath)) {
@@ -105,7 +132,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   }
 
   const resolved = resolve(transcriptPath);
-  if (!resolved.startsWith(homedir()) && !resolved.startsWith(tmpdir())) {
+  if (!isUnderAllowedRoot(resolved, ALLOWED_ROOTS)) {
     log('skip — path outside allowed roots:', resolved);
     transcriptCache.delete(resolved);
     return result;
@@ -128,7 +155,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
 
   let fileStream: ReturnType<typeof createReadStream> | null = null;
   try {
-    fileStream = createReadStream(transcriptPath);
+    fileStream = createReadStream(resolved);
     const rl = createInterface({ input: fileStream, crlfDelay: Infinity });
     let lineCount = 0;
 
