@@ -95,14 +95,31 @@ export function extractToolTarget(toolName: string, input: Record<string, unknow
   return typeof raw === 'string' ? sanitizeTermString(raw) : raw;
 }
 
-// Cache realpath-resolved roots once at module load. realpath dereferences
-// symlinks (e.g. macOS `/var/folders` → `/private/var/folders`) so the
-// validator compares canonical paths consistently. If realpath fails on a
-// root (unusual), fall back to the unresolved value.
+// Allowed roots, snapshotted once at module load. We include both the
+// as-returned form and the realpath form of homedir()/tmpdir() so platforms
+// like macOS work transparently — `os.tmpdir()` returns `/var/folders/...`
+// while the kernel realpath is `/private/var/folders/...`. Either form on
+// the candidate side will match.
+//
+// We deliberately do NOT realpath the candidate path inside parseTranscript:
+// (a) it would 5–10× the syscalls on the cache hit path, and
+// (b) it would break legitimate user setups like `~/.claude → /data/claude`,
+//     where the canonical target sits outside `homedir()`.
+// Symlink-traversal hardening (defense against attacker-placed symlinks
+// under an allowed root pointing at /etc/passwd) is tracked separately;
+// the threat is narrow because `transcript_path` arrives from Claude Code
+// itself, not arbitrary external input.
 function realpathSafe(p: string): string {
   try { return realpathSync(p); } catch { return resolve(p); }
 }
-const ALLOWED_ROOTS: readonly string[] = [realpathSafe(homedir()), realpathSafe(tmpdir())];
+const ALLOWED_ROOTS: readonly string[] = [
+  ...new Set([
+    resolve(homedir()),
+    resolve(tmpdir()),
+    realpathSafe(homedir()),
+    realpathSafe(tmpdir()),
+  ]),
+];
 
 export async function parseTranscript(transcriptPath: string): Promise<TranscriptData> {
   const result: TranscriptData = { ...EMPTY_TRANSCRIPT, tools: [], agents: [], todos: [] };
@@ -114,16 +131,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
     return result;
   }
 
-  // Use realpath, not resolve, for the validator: prevents bypasses where an
-  // attacker-placed symlink under home/tmp points at /etc/passwd. realpath
-  // dereferences the symlink before the allowlist check.
-  let resolved: string;
-  try {
-    resolved = realpathSync(transcriptPath);
-  } catch {
-    log('skip — realpath failed:', transcriptPath);
-    return result;
-  }
+  const resolved = resolve(transcriptPath);
   if (!isUnderAllowedRoot(resolved, ALLOWED_ROOTS)) {
     log('skip — path outside allowed roots:', resolved);
     transcriptCache.delete(resolved);
