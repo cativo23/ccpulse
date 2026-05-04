@@ -177,7 +177,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
       if (++lineCount > MAX_LINES) {
         if (!truncationWarned) {
           truncationWarned = true;
-          log('warn — transcript exceeded MAX_LINES (%d), output may be stale', MAX_LINES);
+          log(`warn — transcript exceeded MAX_LINES (${MAX_LINES}), output may be stale`);
         }
         break;
       }
