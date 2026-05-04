@@ -314,9 +314,9 @@ PRs welcome — particularly for new themes (one of the most common contribution
 
 ### What's next
 
-- **v0.7.0** — additional themes from the community, expanded `lumira themes` subcommand surface.
-- **v1.0** — locked CLI flags surface, snapshot tests for layout regression, soak window before tagging stable. Tracked in [issue #36](https://github.com/cativo23/lumira/issues/36).
-- **Backlog** — incremental transcript parsing for very large sessions ([PR #46](https://github.com/cativo23/lumira/pull/46), deferred until parser hardening lands).
+- **v1.0** — soak window on v0.7.x, then tagging stable. CLI flags, preset names, and config schema are considered frozen from this point.
+- **Themes** — community theme contributions welcome via the theme PR template.
+- **Backlog** — incremental transcript parsing for very large sessions (deferred; see [#43](https://github.com/cativo23/lumira/issues/43)).
 
 For security issues, see [SECURITY.md](SECURITY.md).
 

@@ -15,8 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.0] - 2026-05-01
 
-## [0.7.0] - 2026-05-01
-
 ### Added
 - **Modular theme system** — `src/themes/<slug>.ts` per theme, registry assembly in `src/themes/index.ts` with `assertValidRegistry` enforcing kebab-case slugs and uniqueness at module load. Adding a new theme is now one new file plus a one-line registration.
 - **WCAG AA contrast guard** — `scripts/validate-themes.mjs` runs in CI and fails the build if any powerline cell drops below 4.5:1 against `fg`. Catches contributor PRs that submit unreadable palettes.
@@ -244,7 +242,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GSD session IDs sanitized against path traversal
 - `execFile` used instead of `exec` to prevent shell injection (except terminal width detection where shell redirect is required with procfs-sourced paths)
 
-[Unreleased]: https://github.com/cativo23/lumira/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/cativo23/lumira/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/cativo23/lumira/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/cativo23/lumira/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/cativo23/lumira/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/cativo23/lumira/compare/v0.6.0...v0.6.1
