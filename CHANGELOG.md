@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `transcriptCache` is now bounded with LRU eviction at 10 entries (#69). Previously the cache leaked one entry per Claude Code session for the lifetime of the process.
 - Path validation for `transcript_path` no longer accepts sibling-prefix paths (#73). Previously `/tmpattacker/...` passed the `startsWith('/tmp')` check; now the validator uses `path.relative` so only true descendants of `homedir()` or `tmpdir()` are accepted.
+- Transcript parsing now emits a `LUMIRA_DEBUG` warning when a session exceeds the `MAX_LINES = 50000` cap (#70). Previously the parser silently truncated, leaving stale output with no surfaceable signal.
 
 ### Removed
 - `docs/superpowers/` — local plan/spec scratch artifacts no longer tracked (added to `.gitignore`).

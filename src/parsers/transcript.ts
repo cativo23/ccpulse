@@ -67,7 +67,20 @@ export function _clearTranscriptCache(): void {
   transcriptCache.clear();
 }
 
-const MAX_LINES = 50_000;
+export const MAX_LINES = 50_000;
+
+// Warn-once flag for the MAX_LINES truncation path (#70). Long-running sessions
+// that produce >50k JSONL lines silently lose data after the cap; flagging once
+// per process surfaces the condition in `LUMIRA_DEBUG=1` logs and lets tests
+// observe it. We set the flag regardless of `log.enabled` so the diagnostic is
+// available even when debug logging is off.
+let truncationWarned = false;
+export function _truncationWarned(): boolean {
+  return truncationWarned;
+}
+export function _resetTruncationWarned(): void {
+  truncationWarned = false;
+}
 
 export function normalizeTodoStatus(status: string | undefined): TodoStatus {
   if (!status) return 'pending';
@@ -161,7 +174,13 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
 
     for await (const line of rl) {
       if (!line.trim()) continue;
-      if (++lineCount > MAX_LINES) break;
+      if (++lineCount > MAX_LINES) {
+        if (!truncationWarned) {
+          truncationWarned = true;
+          log(`warn — transcript exceeded MAX_LINES (${MAX_LINES}), output may be stale`);
+        }
+        break;
+      }
 
       try {
         const entry = JSON.parse(line);
