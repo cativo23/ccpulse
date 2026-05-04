@@ -24,7 +24,7 @@ Interactive wizard — preset, theme, icons — previewed live before write.
 ![Claude Code](https://img.shields.io/badge/Claude_Code-compatible-2d3748?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+PHBhdGggZD0iTTY0IDEyOEMzNS44IDEyOCAxMyAxMDUuMiAxMyA3N0MxMyA0OC44IDM1LjggMjYgNjQgMjZjMjguMiAwIDUxIDIyLjggNTEgNTFzLTIyLjggNTEtNTEgNTF6IiBmaWxsPSIjMjQyNTJGIi8+PC9zdmc+)
 ![Qwen Code](https://img.shields.io/badge/Qwen_Code-compatible-6156FF)
 
-> 🚀 Powering hundreds of Claude Code sessions per week — [share yours](https://github.com/cativo23/lumira/discussions) in Discussions.
+> 1,700+ downloads in the first month — [share your setup](https://github.com/cativo23/lumira/discussions) in Discussions.
 
 ## Table of contents
 
@@ -51,12 +51,12 @@ Claude Code's default statusline shows the model name and current directory. Tha
 - **Active tools, agents, and todo progress** — parsed from the live transcript, updated every render.
 - **Cross-platform** — same config drives Claude Code and Qwen Code; Qwen sessions auto-collapse to single-line.
 
-Inspired by [claude-hud](https://github.com/jarrodwatts/claude-hud); takes a different stance on opt-in powerline rendering, theme contrast guarantees, and hyperlinked metadata.
+Inspired by [claude-hud](https://github.com/jarrodwatts/claude-hud); takes a different stance on opt-in powerline rendering, theme contrast guarantees, and Qwen Code compatibility.
 
 ## Requirements
 
 - **Node ≥18**
-- **Nerd Font** (recommended) — for the `` `` `` `` ``◐`` icons throughout the statusline. Falls back to plain glyphs via `icons: emoji` or `icons: none`.
+- **Nerd Font** (recommended) — for branch, folder, model, and spinner icons. Falls back to plain glyphs via `icons: emoji` or `icons: none`.
 - **Truecolor terminal** (for themes / powerline) — auto-detected via `COLORTERM=truecolor`. 256-color terminals get a nearest-index projection; named-ANSI terminals fall back to default colors silently.
 
 ## Features
@@ -316,13 +316,13 @@ PRs welcome — particularly for new themes (one of the most common contribution
 
 - **v1.0** — soak window on v0.7.x, then tagging stable. CLI flags, preset names, and config schema are considered frozen from this point.
 - **Themes** — community theme contributions welcome via the theme PR template.
-- **Backlog** — incremental transcript parsing for very large sessions (deferred; see [#43](https://github.com/cativo23/lumira/issues/43)).
+- **Backlog** — incremental transcript parsing for very large sessions (deferred; full re-parse stays under budget for real-world transcripts).
 
 For security issues, see [SECURITY.md](SECURITY.md).
 
 ## Credits
 
-Inspired by [claude-hud](https://github.com/jarrodwatts/claude-hud). Migrated from [claude-setup](https://github.com/cativo23/claude-setup) statusline.
+Migrated from [claude-setup](https://github.com/cativo23/claude-setup) statusline.
 
 Theme palettes drawn from upstream specs: [Dracula](https://draculatheme.com), [Nord](https://www.nordtheme.com), [Tokyo Night](https://github.com/folke/tokyonight.nvim), [Catppuccin](https://catppuccin.com), [Monokai](https://monokai.pro), [Gruvbox](https://github.com/morhetz/gruvbox), [Solarized](https://ethanschoonover.com/solarized).
 

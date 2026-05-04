@@ -1,7 +1,7 @@
 {
   "name": "lumira",
   "version": "0.7.1",
-  "description": "lumira — real-time statusline for Claude Code",
+  "description": "Real-time statusline HUD for Claude Code and Qwen Code — context bar, burn rate, themes, powerline, zero deps.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -38,6 +38,8 @@
   "keywords": [
     "claude-code",
     "claude",
+    "qwen-code",
+    "qwen",
     "statusline",
     "terminal",
     "nerd-font",
