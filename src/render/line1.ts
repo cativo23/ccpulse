@@ -1,7 +1,7 @@
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fitSegments, truncField } from './text.js';
-import { getModelName, formatGitChanges, SEP } from './shared.js';
+import { formatGitChanges, SEP } from './shared.js';
 import { hyperlink } from './hyperlink.js';
 import type { Colors } from './colors.js';
 import type { RenderContext, TranscriptData } from '../types.js';
@@ -18,8 +18,7 @@ export function renderLine1(ctx: RenderContext, c: Colors): string {
 
   // Model
   if (display.model) {
-    const modelName = getModelName(input.raw.model);
-    if (modelName) left.push(c.cyan(`${icons.model} ${modelName}`));
+    if (input.model) left.push(c.cyan(`${icons.model} ${input.model}`));
   }
 
   // Branch + git changes (prefer Qwen's native git.branch, fallback to external git)

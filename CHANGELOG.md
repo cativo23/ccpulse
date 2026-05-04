@@ -7,21 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- `CODE_OF_CONDUCT.md` — Contributor Covenant 2.1 with a dedicated reporting email.
-
-### Changed
-- CI: migrated release workflow from gitflow (release/* → main PR) to GitHub Flow (push to tag `v*`).
-- Docs: updated CONTRIBUTING.md and AGENTS.md to reflect single-trunk workflow.
-- Docs: SECURITY.md disclosure timeline now describes coordinated tag on `main` instead of release branches.
+## [0.7.1] - 2026-05-04
 
 ### Fixed
-- `transcriptCache` is now bounded with LRU eviction at 10 entries (#69). Previously the cache leaked one entry per Claude Code session for the lifetime of the process.
-- Path validation for `transcript_path` no longer accepts sibling-prefix paths (#73). Previously `/tmpattacker/...` passed the `startsWith('/tmp')` check; now the validator uses `path.relative` so only true descendants of `homedir()` or `tmpdir()` are accepted.
-- Transcript parsing now emits a `LUMIRA_DEBUG` warning when a session exceeds the `MAX_LINES = 50000` cap (#70). Previously the parser silently truncated, leaving stale output with no surfaceable signal.
+- Model name display now uses the sanitized `input.model` value from the normalization layer instead of reading `input.raw.model` directly. Previously all three renderers (`line1`, `minimal`, `powerline-line1`) bypassed `sanitizeTermString()`, which could allow terminal control sequences from a malformed stdin payload to reach the statusline output.
+- Removed the now-dead `getModelName()` helper from `src/render/shared.ts`; its logic was already duplicated and superseded by `normalize.ts`.
 
-### Removed
-- `docs/superpowers/` — local plan/spec scratch artifacts no longer tracked (added to `.gitignore`).
+## [0.7.0] - 2026-05-01
 
 ## [0.7.0] - 2026-05-01
 

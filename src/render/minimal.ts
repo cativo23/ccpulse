@@ -1,6 +1,6 @@
 import { basename } from 'node:path';
 import { truncField } from './text.js';
-import { getModelName, buildContextBar, formatGitChanges, formatQwenMetrics, SEP_MINIMAL } from './shared.js';
+import { buildContextBar, formatGitChanges, formatQwenMetrics, SEP_MINIMAL } from './shared.js';
 import type { Colors } from './colors.js';
 import { formatTokens, formatDuration, formatCost } from '../utils/format.js';
 import { renderLine3 } from './line3.js';
@@ -32,8 +32,7 @@ export function renderMinimal(ctx: RenderContext, c: Colors): string {
 
   // Model
   if (display.model) {
-    const modelName = getModelName(input.raw.model);
-    if (modelName) parts.push(c.cyan(truncField(modelName, 20)));
+    if (input.model) parts.push(c.cyan(truncField(input.model, 20)));
   }
 
   // Context bar

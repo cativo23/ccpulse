@@ -1,6 +1,5 @@
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { getModelName } from './shared.js';
 import { truncField } from './text.js';
 import { hyperlink } from './hyperlink.js';
 import {
@@ -37,10 +36,9 @@ function buildSegments(ctx: RenderContext, palette: PowerlinePalette): Powerline
   const segments: PowerlineSegment[] = [];
 
   if (display.model) {
-    const modelName = getModelName(input.raw.model);
-    if (modelName) {
+    if (input.model) {
       segments.push({
-        text: modelName,
+        text: input.model,
         icon: icons.model,
         bg: palette.modelBg,
         fg: palette.fg,
