@@ -1,3 +1,5 @@
+import { DEFAULT_CONTEXT_WARNING_THRESHOLD, DEFAULT_CONTEXT_CRITICAL_THRESHOLD } from '../types.js';
+
 export type ColorMode = 'named' | '256' | 'truecolor';
 export type ColorName = 'cyan' | 'magenta' | 'yellow' | 'green' | 'orange' | 'red' | 'blinkRed' | 'gray' | 'brightBlue' | 'dim' | 'bold';
 
@@ -82,10 +84,22 @@ export function detectColorMode(): ColorMode {
   return 'named';
 }
 
+/**
+ * Map a context-fill percentage to its alarm color.
+ *
+ * Zones (with default 70/85): green<50, yellow 50–70, orange 70–85, red 85+.
+ *
+ * **Asymmetry by design:** the green→yellow boundary is fixed at 50%, the
+ * "universally healthy" mark. So if a user sets `warning ≤ 50`, the yellow
+ * zone collapses entirely and the bar jumps green→orange at `warning`. That's
+ * consistent with the field's contract ("percentage at which the bar turns
+ * orange") — yellow is just a soft pre-alarm buffer that only exists when
+ * there's room for it between 50 and `warning`.
+ */
 export function getContextColor(
   pct: number,
-  warning = 70,
-  critical = 85,
+  warning = DEFAULT_CONTEXT_WARNING_THRESHOLD,
+  critical = DEFAULT_CONTEXT_CRITICAL_THRESHOLD,
 ): ColorName {
   if (pct < warning) return pct < 50 ? 'green' : 'yellow';
   if (pct < critical) return 'orange';

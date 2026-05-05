@@ -218,7 +218,10 @@ export interface DisplayToggles {
   cacheMetrics: boolean;
   mcp: boolean;
   health: boolean;
-  /** Percentage at which the context bar turns orange and shows the fire icon. Default 70. Clamped [0,100]. */
+  /**
+   * Percentage at which the context bar turns orange and shows the fire icon. Default 70. Clamped [0,100].
+   * Setting this ≤ 50 collapses the yellow zone; the bar jumps green→orange directly at this value.
+   */
   contextWarningThreshold: number;
   /** Percentage at which the context bar turns red/blinking and shows the skull icon. Default 85. Clamped [0,100]. Must be > contextWarningThreshold. */
   contextCriticalThreshold: number;
