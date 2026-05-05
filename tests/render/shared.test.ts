@@ -115,29 +115,29 @@ describe('formatGitChanges', () => {
 });
 
 describe('buildContextBar — compact hint', () => {
-  it('shows /compact? hint at 80-89%', () => {
+  it('shows /compact? hint at critical-(critical+5)% (default 85-89%)', () => {
+    const bar = stripAnsi(buildContextBar(87, c));
+    expect(bar).toContain('/compact?');
+    expect(bar).not.toContain('/compact!');
+  });
+
+  it('shows /compact! hint at >= critical+5% (default 90%+)', () => {
+    const bar = stripAnsi(buildContextBar(95, c));
+    expect(bar).toContain('/compact!');
+  });
+
+  it('does not show compact hint below critical (default 85%)', () => {
+    const bar = stripAnsi(buildContextBar(80, c));
+    expect(bar).not.toContain('/compact');
+  });
+
+  it('shows /compact? at exactly critical (default 85%) — boundary inclusive', () => {
     const bar = stripAnsi(buildContextBar(85, c));
     expect(bar).toContain('/compact?');
     expect(bar).not.toContain('/compact!');
   });
 
-  it('shows /compact! hint at 90%+', () => {
-    const bar = stripAnsi(buildContextBar(95, c));
-    expect(bar).toContain('/compact!');
-  });
-
-  it('does not show compact hint below 80%', () => {
-    const bar = stripAnsi(buildContextBar(70, c));
-    expect(bar).not.toContain('/compact');
-  });
-
-  it('shows /compact? at exactly 80% (boundary inclusive)', () => {
-    const bar = stripAnsi(buildContextBar(80, c));
-    expect(bar).toContain('/compact?');
-    expect(bar).not.toContain('/compact!');
-  });
-
-  it('shows /compact! at exactly 90% (boundary inclusive)', () => {
+  it('shows /compact! at exactly critical+5 (default 90%) — boundary inclusive', () => {
     const bar = stripAnsi(buildContextBar(90, c));
     expect(bar).toContain('/compact!');
   });
@@ -176,6 +176,42 @@ describe('buildContextBar — plain mode (powerline)', () => {
   it('classic mode (plain=false) is unchanged — still uses \\x1b[0m', () => {
     const out = buildContextBar(50, c, { plain: false });
     expect(out).toContain('\x1b[0m');
+  });
+});
+
+describe('buildContextBar — configurable thresholds', () => {
+  it('respects custom warningThreshold for fire icon', () => {
+    // With warning=50, fire should show at 50% (no longer green/yellow zone)
+    const bar = buildContextBar(50, c, { warningThreshold: 50, criticalThreshold: 90 });
+    expect(bar).toContain(''); // fire icon
+  });
+
+  it('respects custom criticalThreshold for skull icon', () => {
+    // With critical=60, skull should show at 60%
+    const bar = buildContextBar(60, c, { warningThreshold: 30, criticalThreshold: 60 });
+    expect(bar).toContain(''); // skull icon
+  });
+
+  it('color transitions to orange at custom warning threshold', () => {
+    // With warning=40, pct=45 should be orange (\x1b[38;5;208m), not yellow
+    const bar = buildContextBar(45, c, { warningThreshold: 40, criticalThreshold: 80 });
+    expect(bar).toContain('\x1b[38;5;208m');
+  });
+
+  it('color transitions to blinkRed at custom critical threshold', () => {
+    // With critical=50, pct=55 should be blinkRed (\x1b[5;31m)
+    const bar = buildContextBar(55, c, { warningThreshold: 30, criticalThreshold: 50 });
+    expect(bar).toContain('\x1b[5;31m');
+  });
+
+  it('default thresholds (70/85) preserved when opts omitted', () => {
+    // pct=72 → fire icon (>=70), still orange (<85)
+    const bar = buildContextBar(72, c);
+    expect(bar).toContain('');
+    expect(bar).not.toContain('');
+    // pct=86 → skull icon (>=85)
+    const skullBar = buildContextBar(86, c);
+    expect(skullBar).toContain('');
   });
 });
 

@@ -1,14 +1,47 @@
 import { readFileSync, existsSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
-import { DEFAULT_CONFIG, DEFAULT_DISPLAY, POWERLINE_STYLE_NAMES, type HudConfig, type DisplayToggles, type ColorConfig } from './types.js';
+import { DEFAULT_CONFIG, DEFAULT_DISPLAY, DEFAULT_CONTEXT_WARNING_THRESHOLD, DEFAULT_CONTEXT_CRITICAL_THRESHOLD, POWERLINE_STYLE_NAMES, type HudConfig, type DisplayToggles, type ColorConfig } from './types.js';
 
 // Module-level flag: fires the qwen→minimal deprecation warning once per
 // Node process. Process-scoped by design — tests must run in forked workers
 // (see vitest.config.ts `pool: 'forks'`). Issue #20.
 let qwenWarningShown = false;
+let thresholdWarningShown = false;
 /** Test-only — resets the process-scoped qwenWarningShown flag. Do not call in production. */
-export function _resetMigrationFlags(): void { qwenWarningShown = false; }
+export function _resetMigrationFlags(): void { qwenWarningShown = false; thresholdWarningShown = false; }
+
+const clampPct = (n: number): number => Math.max(0, Math.min(100, n));
+
+/**
+ * Validate context-bar threshold pair. Clamps each to [0, 100]. If `warning`
+ * is not strictly less than `critical` after clamping, emits a one-shot warn
+ * to stderr and returns the defaults (70/85). Falls back to defaults if a
+ * value is missing or non-finite.
+ */
+function resolveThresholds(
+  rawWarn: unknown,
+  rawCrit: unknown,
+): { warning: number; critical: number } {
+  const hasWarn = typeof rawWarn === 'number' && Number.isFinite(rawWarn);
+  const hasCrit = typeof rawCrit === 'number' && Number.isFinite(rawCrit);
+  if (!hasWarn && !hasCrit) {
+    return { warning: DEFAULT_CONTEXT_WARNING_THRESHOLD, critical: DEFAULT_CONTEXT_CRITICAL_THRESHOLD };
+  }
+  const warning = hasWarn ? clampPct(rawWarn as number) : DEFAULT_CONTEXT_WARNING_THRESHOLD;
+  const critical = hasCrit ? clampPct(rawCrit as number) : DEFAULT_CONTEXT_CRITICAL_THRESHOLD;
+  if (warning >= critical) {
+    if (!thresholdWarningShown) {
+      process.stderr.write(
+        `[lumira] context thresholds invalid (warning=${warning}, critical=${critical}); ` +
+        `falling back to defaults (${DEFAULT_CONTEXT_WARNING_THRESHOLD}/${DEFAULT_CONTEXT_CRITICAL_THRESHOLD})\n`,
+      );
+      thresholdWarningShown = true;
+    }
+    return { warning: DEFAULT_CONTEXT_WARNING_THRESHOLD, critical: DEFAULT_CONTEXT_CRITICAL_THRESHOLD };
+  }
+  return { warning, critical };
+}
 
 export function loadConfig(configDir: string = join(homedir(), '.config', 'lumira')): HudConfig {
   const p = join(configDir, 'config.json');
@@ -42,9 +75,13 @@ function mergeConfig(rawIn: Record<string, unknown>): HudConfig {
 
   // Then overlay user's explicit display toggles (user wins over preset)
   if (raw.display && typeof raw.display === 'object') {
+    const rawDisplay = raw.display as Record<string, unknown>;
     for (const k of Object.keys(DEFAULT_DISPLAY) as (keyof DisplayToggles)[]) {
-      if (typeof (raw.display as Record<string, unknown>)[k] === 'boolean') result.display[k] = (raw.display as Record<string, boolean>)[k];
+      if (typeof rawDisplay[k] === 'boolean') (result.display[k] as boolean) = rawDisplay[k] as boolean;
     }
+    const { warning, critical } = resolveThresholds(rawDisplay.contextWarningThreshold, rawDisplay.contextCriticalThreshold);
+    result.display.contextWarningThreshold = warning;
+    result.display.contextCriticalThreshold = critical;
   }
 
   if (typeof raw.theme === 'string' && raw.theme.length > 0) result.theme = raw.theme;
@@ -120,7 +157,7 @@ export function applyPreset(r: HudConfig, preset: NonNullable<HudConfig['preset'
   r.preset = preset;
   r.layout = def.layout;
   for (const [k, v] of Object.entries(def.display)) {
-    r.display[k as keyof DisplayToggles] = v as boolean;
+    (r.display as unknown as Record<string, unknown>)[k] = v;
   }
 }
 

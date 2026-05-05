@@ -26,7 +26,12 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
   // Context bar
   if (display.contextBar) {
     const pct = input.context.usedPercentage;
-    leftParts.push(buildContextBar(pct, c, { iconSet: icons, cols }));
+    leftParts.push(buildContextBar(pct, c, {
+      iconSet: icons,
+      cols,
+      warningThreshold: display.contextWarningThreshold,
+      criticalThreshold: display.contextCriticalThreshold,
+    }));
   }
 
   // Context tokens — prefer windowSize from payload over back-derivation.
