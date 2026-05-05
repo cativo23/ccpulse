@@ -156,8 +156,11 @@ export function applyPreset(r: HudConfig, preset: NonNullable<HudConfig['preset'
   const def = PRESET_DEFS[preset];
   r.preset = preset;
   r.layout = def.layout;
+  // PRESET_DEFS only set boolean toggles — threshold numbers are not
+  // overridable via preset. The runtime guard keeps the cast narrow and
+  // catches accidental non-boolean entries in PRESET_DEFS.
   for (const [k, v] of Object.entries(def.display)) {
-    (r.display as unknown as Record<string, unknown>)[k] = v;
+    if (typeof v === 'boolean') (r.display as unknown as Record<string, boolean>)[k] = v;
   }
 }
 

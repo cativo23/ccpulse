@@ -218,7 +218,10 @@ export interface DisplayToggles {
   cacheMetrics: boolean;
   mcp: boolean;
   health: boolean;
-  /** Percentage at which the context bar turns orange and shows the fire icon. Default 70. Clamped [0,100]. */
+  /**
+   * Percentage at which the context bar turns orange and shows the fire icon. Default 70. Clamped [0,100].
+   * Setting this ≤ 50 collapses the yellow zone; the bar jumps green→orange directly at this value.
+   */
   contextWarningThreshold: number;
   /** Percentage at which the context bar turns red/blinking and shows the skull icon. Default 85. Clamped [0,100]. Must be > contextWarningThreshold. */
   contextCriticalThreshold: number;
@@ -227,6 +230,10 @@ export interface DisplayToggles {
 export interface ColorConfig {
   mode: 'auto' | 'named' | '256' | 'truecolor';
 }
+
+/** Default thresholds — used as fallback when user-provided values are invalid. */
+export const DEFAULT_CONTEXT_WARNING_THRESHOLD = 70;
+export const DEFAULT_CONTEXT_CRITICAL_THRESHOLD = 85;
 
 export const DEFAULT_DISPLAY: DisplayToggles = {
   model: true,
@@ -255,13 +262,9 @@ export const DEFAULT_DISPLAY: DisplayToggles = {
   cacheMetrics: true,
   mcp: true,
   health: false,
-  contextWarningThreshold: 70,
-  contextCriticalThreshold: 85,
+  contextWarningThreshold: DEFAULT_CONTEXT_WARNING_THRESHOLD,
+  contextCriticalThreshold: DEFAULT_CONTEXT_CRITICAL_THRESHOLD,
 };
-
-/** Default thresholds — used as fallback when user-provided values are invalid. */
-export const DEFAULT_CONTEXT_WARNING_THRESHOLD = 70;
-export const DEFAULT_CONTEXT_CRITICAL_THRESHOLD = 85;
 
 export const DEFAULT_CONFIG: HudConfig = {
   layout: 'auto',

@@ -1,7 +1,7 @@
 import { NERD_ICONS, type IconSet } from './icons.js';
 import { getContextColor, type Colors } from './colors.js';
 import { formatTokens } from '../utils/format.js';
-import type { GitStatus } from '../types.js';
+import { DEFAULT_CONTEXT_WARNING_THRESHOLD, DEFAULT_CONTEXT_CRITICAL_THRESHOLD, type GitStatus } from '../types.js';
 import type { NormalizedInput } from '../normalize.js';
 
 export const SEP = ` \x1b[90m\u2502\x1b[0m `;
@@ -24,7 +24,11 @@ export interface ContextBarOpts {
   plain?: boolean;
   /** Terminal width; used to pick an adaptive segment count when `segments` is not set. */
   cols?: number;
-  /** Percentage at which the bar turns orange and shows the fire icon. Default 70. */
+  /**
+   * Percentage at which the bar turns orange and shows the fire icon. Default 70.
+   * Note: yellow zone exists only when `warningThreshold > 50`; below that, the
+   * bar jumps green→orange directly. See `getContextColor` for details.
+   */
   warningThreshold?: number;
   /** Percentage at which the bar turns red/blinking and shows the skull icon. Default 85. */
   criticalThreshold?: number;
@@ -42,8 +46,8 @@ export function buildContextBar(pct: number, c: Colors, opts?: ContextBarOpts): 
   const showHint = opts?.showHint ?? true;
   const plain = opts?.plain ?? false;
   const ic = opts?.iconSet ?? NERD_ICONS;
-  const warning = opts?.warningThreshold ?? 70;
-  const critical = opts?.criticalThreshold ?? 85;
+  const warning = opts?.warningThreshold ?? DEFAULT_CONTEXT_WARNING_THRESHOLD;
+  const critical = opts?.criticalThreshold ?? DEFAULT_CONTEXT_CRITICAL_THRESHOLD;
 
   const filled = Math.round((pct / 100) * segments);
   const colorFn = c[getContextColor(pct, warning, critical)];
