@@ -27,3 +27,18 @@ export function formatBurnRate(costUsd: number, durationMs: number): string | nu
   const perHour = costUsd / (durationMs / 3_600_000);
   return '$' + perHour.toFixed(2) + '/h';
 }
+
+/**
+ * Compact ETA formatting for context-depletion display.
+ *   < 60   → `${m}m`           e.g. 0m, 45m, 59m
+ *   ≥ 60   → `${h}h` if minutes==0, else `${h}h${m}m`   e.g. 1h, 2h15m, 24h
+ * Negative inputs are clamped to 0; non-finite returns ''.
+ */
+export function formatEtaMinutes(minutes: number): string {
+  if (!Number.isFinite(minutes)) return '';
+  const total = Math.max(0, Math.round(minutes));
+  if (total < 60) return `${total}m`;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return m === 0 ? `${h}h` : `${h}h${m}m`;
+}

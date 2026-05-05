@@ -37,6 +37,19 @@ describe('renderLine2', () => {
     expect(out).toContain('55%');
   });
 
+  it('does not show depletion ETA by default (opt-in)', () => {
+    const out = stripAnsi(renderLine2(makeCtx(), c));
+    expect(out).not.toContain('left');
+  });
+
+  it('shows depletion ETA when contextDepletionEta is enabled', () => {
+    const ctx = makeCtx({
+      config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, contextDepletionEta: true } },
+    });
+    const out = stripAnsi(renderLine2(ctx, c));
+    expect(out).toMatch(/· ~\d+(h\d+m|h|m) left/);
+  });
+
   it('shows tokens', () => {
     const out = stripAnsi(renderLine2(makeCtx(), c));
     expect(out).toContain('131k');

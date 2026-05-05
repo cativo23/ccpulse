@@ -31,6 +31,8 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
       cols,
       warningThreshold: display.contextWarningThreshold,
       criticalThreshold: display.contextCriticalThreshold,
+      showEta: display.contextDepletionEta,
+      durationMs: input.durationMs,
     }));
   }
 

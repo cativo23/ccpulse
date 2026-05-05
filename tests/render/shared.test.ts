@@ -215,6 +215,54 @@ describe('buildContextBar — configurable thresholds', () => {
   });
 });
 
+describe('buildContextBar — depletion ETA', () => {
+  // Anchor scenario: 30% used over 60min → rate 0.5%/min → 70% remaining → 140 min ETA = 2h20m.
+  const baseDuration = 60 * 60_000; // 60 minutes
+
+  it('appends ETA when toggle is on and gates pass', () => {
+    const bar = stripAnsi(buildContextBar(30, c, { showEta: true, durationMs: baseDuration }));
+    expect(bar).toContain('· ~2h20m left');
+  });
+
+  it('omits ETA when toggle is off', () => {
+    const bar = stripAnsi(buildContextBar(30, c, { showEta: false, durationMs: baseDuration }));
+    expect(bar).not.toContain('left');
+  });
+
+  it('omits ETA when durationMs < 60s (insufficient session data)', () => {
+    const bar = stripAnsi(buildContextBar(30, c, { showEta: true, durationMs: 30_000 }));
+    expect(bar).not.toContain('left');
+  });
+
+  it('omits ETA when used percentage is 0 (no fill rate yet)', () => {
+    const bar = stripAnsi(buildContextBar(0, c, { showEta: true, durationMs: baseDuration }));
+    expect(bar).not.toContain('left');
+  });
+
+  it('omits ETA when computed rate < 0.01 %/min', () => {
+    // 0.5% used over 100 minutes → 0.005 %/min → below the 0.01 floor.
+    const bar = stripAnsi(buildContextBar(0.5, c, { showEta: true, durationMs: 100 * 60_000 }));
+    expect(bar).not.toContain('left');
+  });
+
+  it('omits ETA when computed eta > 24h (effectively infinite)', () => {
+    // 1% used over 60 minutes → 0.0167 %/min, remaining 99% → ~5940 min eta — over the 1440 cap.
+    const bar = stripAnsi(buildContextBar(1, c, { showEta: true, durationMs: 60 * 60_000 }));
+    expect(bar).not.toContain('left');
+  });
+
+  it('omits ETA when durationMs is undefined', () => {
+    const bar = stripAnsi(buildContextBar(30, c, { showEta: true }));
+    expect(bar).not.toContain('left');
+  });
+
+  it('uses the dim color helper for the ETA text', () => {
+    // Dim wraps with \x1b[2m … \x1b[0m. Verify the suffix is wrapped.
+    const bar = buildContextBar(30, c, { showEta: true, durationMs: baseDuration });
+    expect(bar).toContain('\x1b[2m· ~2h20m left\x1b[0m');
+  });
+});
+
 describe('SEP constants', () => {
   it('SEP uses Unicode pipe', () => {
     expect(SEP).toContain('\u2502');

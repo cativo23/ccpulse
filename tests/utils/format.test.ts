@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTokens, formatDuration, formatCost, formatBurnRate } from '../../src/utils/format.js';
+import { formatTokens, formatDuration, formatCost, formatBurnRate, formatEtaMinutes } from '../../src/utils/format.js';
 
 describe('formatTokens', () => {
   it('returns empty string for null/undefined', () => {
@@ -62,5 +62,33 @@ describe('formatBurnRate', () => {
   });
   it('returns null for zero cost', () => {
     expect(formatBurnRate(0, 120_000)).toBeNull();
+  });
+});
+
+describe('formatEtaMinutes', () => {
+  it('formats sub-hour as plain minutes', () => {
+    expect(formatEtaMinutes(0)).toBe('0m');
+    expect(formatEtaMinutes(45)).toBe('45m');
+    expect(formatEtaMinutes(59)).toBe('59m');
+  });
+  it('formats whole hours without trailing minutes', () => {
+    expect(formatEtaMinutes(60)).toBe('1h');
+    expect(formatEtaMinutes(600)).toBe('10h');
+    expect(formatEtaMinutes(1440)).toBe('24h');
+  });
+  it('formats mixed hours and minutes', () => {
+    expect(formatEtaMinutes(75)).toBe('1h15m');
+    expect(formatEtaMinutes(135)).toBe('2h15m');
+  });
+  it('rounds fractional minutes to nearest', () => {
+    expect(formatEtaMinutes(74.6)).toBe('1h15m');
+    expect(formatEtaMinutes(0.4)).toBe('0m');
+  });
+  it('clamps negative values to 0m', () => {
+    expect(formatEtaMinutes(-10)).toBe('0m');
+  });
+  it('returns empty string for non-finite values', () => {
+    expect(formatEtaMinutes(Infinity)).toBe('');
+    expect(formatEtaMinutes(NaN)).toBe('');
   });
 });

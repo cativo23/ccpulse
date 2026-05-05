@@ -46,6 +46,8 @@ export function renderMinimal(ctx: RenderContext, c: Colors): string {
       showHint: false,
       warningThreshold: display.contextWarningThreshold,
       criticalThreshold: display.contextCriticalThreshold,
+      showEta: display.contextDepletionEta,
+      durationMs: input.durationMs,
     }));
   }
 
