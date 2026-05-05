@@ -332,6 +332,20 @@ describe('cacheHitRate normalization', () => {
     const input = { ...claudeInput, context_window: { ...claudeInput.context_window, cache_read_input_tokens: 5000000, total_input_tokens: 957000 } };
     expect(normalize(input).cacheHitRate).toBe(100);
   });
+  it('falls back to total_input denominator when current_usage has no cache fields', () => {
+    // Modern payload but partial — only output_tokens (no cache_read/creation/input).
+    // Cached comes from legacy top-level; denominator falls back to total_input_tokens.
+    const input = {
+      ...claudeInput,
+      context_window: {
+        ...claudeInput.context_window,
+        current_usage: { output_tokens: 25000 },
+        cache_read_input_tokens: 100000,
+        total_input_tokens: 131000,
+      },
+    };
+    expect(normalize(input).cacheHitRate).toBe(76);
+  });
 });
 
 describe('isQwenInput discriminant', () => {
