@@ -50,8 +50,8 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
   if (display.cacheMetrics) {
     const cacheRead = input.tokens.cached;
     const totalIn = input.tokens.input;
-    if (cacheRead != null && totalIn > 0) {
-      const hitRate = Math.round((cacheRead / totalIn) * 100);
+    if (cacheRead != null && cacheRead > 0 && totalIn > 0) {
+      const hitRate = Math.min(100, Math.round((cacheRead / totalIn) * 100));
       leftParts.push(c.dim(`cache ${hitRate}%`));
     }
   }
