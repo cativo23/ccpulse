@@ -37,11 +37,18 @@ function buildSegments(ctx: RenderContext, palette: PowerlinePalette, c: Colors)
     segments.push({ text: bar, bg: palette.modelBg, fg: palette.fg, priority: 100 });
   }
 
-  // Context tokens
-  if (display.contextTokens && input.tokens.input > 0 && input.context.usedPercentage > 0) {
-    const used = input.tokens.input;
-    const capacity = Math.round(used / (input.context.usedPercentage / 100));
-    segments.push({ text: `${formatTokens(used)}/${formatTokens(capacity)}`, bg: palette.dirBg, fg: palette.fg, priority: 80 });
+  // Context tokens — prefer windowSize from payload over back-derivation.
+  // total_input_tokens is cumulative across the session; current context size
+  // is windowSize × usedPercentage / 100. Falls back to back-derivation for
+  // legacy payloads without context_window_size. Mirrors line2.ts behaviour.
+  if (display.contextTokens && input.context.usedPercentage > 0) {
+    const pct = input.context.usedPercentage;
+    const capacity = input.context.windowSize
+      ?? (input.tokens.input > 0 ? Math.round(input.tokens.input / (pct / 100)) : 0);
+    if (capacity > 0) {
+      const used = Math.round(capacity * pct / 100);
+      segments.push({ text: `${formatTokens(used)}/${formatTokens(capacity)}`, bg: palette.dirBg, fg: palette.fg, priority: 80 });
+    }
   }
 
   // Cost

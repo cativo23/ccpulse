@@ -46,6 +46,28 @@ describe('renderPowerlineLine2', () => {
     expect(out).toContain('$');
   });
 
+  it('uses context_window_size as capacity, not back-derived from cumulative input', () => {
+    // total_input_tokens (957k) is cumulative; real context = 18% of 1M = 180k.
+    // Pre-fix would have shown 957k/5.3M (back-derived from 957k/0.18).
+    const rawInput = {
+      model: 'Claude Sonnet 4.6',
+      session_id: 'test',
+      context_window: {
+        used_percentage: 18,
+        remaining_percentage: 82,
+        total_input_tokens: 957000,
+        total_output_tokens: 1656000,
+        context_window_size: 1000000,
+      },
+      cost: { total_cost_usd: 0.42, total_duration_ms: 185000 },
+    };
+    const ctx = makeCtx({ input: normalize(rawInput) });
+    const out = stripAnsi(renderPowerlineLine2(ctx, 'truecolor', null, c));
+    expect(out).toContain('180k/1.0M');
+    expect(out).not.toContain('5.3M');
+    expect(out).not.toContain('957k/');
+  });
+
   it('returns empty string when all display toggles are off', () => {
     const ctx = makeCtx({
       config: {
