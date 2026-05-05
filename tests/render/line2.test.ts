@@ -159,6 +159,21 @@ describe('renderLine2', () => {
     expect(out).toContain('MCP 1/2');
   });
 
+  it('uses context_window_size as capacity instead of back-deriving (≥ 2.1.x)', () => {
+    // total_input_tokens (957k) is cumulative; real context is 18% of 1M = 180k
+    const inputOverride = {
+      context_window: {
+        ...baseInput.context_window,
+        used_percentage: 18,
+        total_input_tokens: 957000,
+        context_window_size: 1000000,
+      },
+    };
+    const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
+    expect(out).toContain('180k/1.0M');
+    expect(out).not.toContain('957k/');
+  });
+
   it('shows contextTokens estimate', () => {
     const inputOverride = { context_window: { ...baseInput.context_window, used_percentage: 50, total_input_tokens: 100000 } };
     const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));

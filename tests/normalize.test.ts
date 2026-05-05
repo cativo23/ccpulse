@@ -102,6 +102,23 @@ describe('normalize', () => {
       expect(result.context.windowSize).toBe(1000000);
     });
 
+    it('extracts window size from Claude (≥ 2.1.x payload)', () => {
+      const input = { ...claudeInput, context_window: { ...claudeInput.context_window, context_window_size: 1000000 } };
+      expect(normalize(input).context.windowSize).toBe(1000000);
+    });
+
+    it('reads effort.level from Claude stdin (≥ 2.1.x)', () => {
+      const input = { ...claudeInput, effort: { level: 'high' } };
+      expect(normalize(input).effortLevel).toBe('high');
+    });
+
+    it('rejects effort.level not in the allowed enum', () => {
+      const input = { ...claudeInput, effort: { level: 'EXTREME' } };
+      expect(normalize(input).effortLevel).toBeUndefined();
+      const input2 = { ...claudeInput, effort: { level: '\x1b[31m' } };
+      expect(normalize(input2).effortLevel).toBeUndefined();
+    });
+
     it('window size is undefined for Claude', () => {
       const result = normalize(claudeInput);
       expect(result.context.windowSize).toBeUndefined();
@@ -232,6 +249,14 @@ describe('sanitizeTermString', () => {
   });
   it('preserves normal text and unicode', () => {
     expect(sanitizeTermString('feat/add-日本語')).toBe('feat/add-日本語');
+  });
+  it('strips Unicode bidi overrides (RTL spoofing)', () => {
+    // U+202E RIGHT-TO-LEFT OVERRIDE — visually flips trailing text
+    expect(sanitizeTermString('safe‮malicious')).toBe('safemalicious');
+    // U+200B ZERO-WIDTH SPACE
+    expect(sanitizeTermString('hi​dden')).toBe('hidden');
+    // U+2066 LEFT-TO-RIGHT ISOLATE
+    expect(sanitizeTermString('a⁦b⁩c')).toBe('abc');
   });
   it('returns empty string for all-control input', () => {
     expect(sanitizeTermString('\x1b\x9b\x00')).toBe('');

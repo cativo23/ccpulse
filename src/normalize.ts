@@ -78,6 +78,9 @@ export interface NormalizedInput {
   /** Worktree name */
   worktreeName?: string;
 
+  /** Reasoning effort level (≥ 2.1.x stdin, falls back to transcript regex) */
+  effortLevel?: string;
+
   /** Rate limits (Claude only) */
   rateLimits?: {
     fiveHour?: { usedPercentage: number; resetsAt?: number };
@@ -91,10 +94,21 @@ export interface NormalizedInput {
   raw: RawInput;
 }
 
-/** Strip terminal control characters (C0 + C1 + DEL) from untrusted strings */
+/**
+ * Strip terminal control characters and bidirectional/zero-width Unicode from
+ * untrusted strings.
+ * - C0/C1 + DEL — escape sequences, ANSI, etc.
+ * - U+200B-200F — zero-width and LTR/RTL marks
+ * - U+202A-202E — explicit directional embedding/overrides (visual spoofing)
+ * - U+2028/2029 — line/paragraph separators
+ * - U+2066-2069 — directional isolates
+ */
 export function sanitizeTermString(s: string): string {
-  return s.replace(/[\x00-\x1f\x7f-\x9f]/g, '');
+  return s.replace(/[\x00-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2028\u2029\u2066-\u2069]/g, '');
 }
+
+/** Allowed values for the reasoning effort level field (CC ≥ 2.1.x). */
+const VALID_EFFORT_LEVELS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 
 export function normalize(input: RawInput): NormalizedInput {
   const platform: Platform = isQwenInput(input) ? 'qwen-code' : 'claude-code';
@@ -206,7 +220,9 @@ export function normalize(input: RawInput): NormalizedInput {
     },
     context: {
       usedPercentage: input.context_window.used_percentage,
-      windowSize: qwen ? qwen.context_window.context_window_size : undefined,
+      windowSize: qwen
+        ? qwen.context_window.context_window_size
+        : claude?.context_window?.context_window_size,
     },
     cost: claude ? claude.cost?.total_cost_usd : undefined,
     durationMs: claude ? claude.cost?.total_duration_ms : undefined,
@@ -218,6 +234,9 @@ export function normalize(input: RawInput): NormalizedInput {
     sessionName: input.session_name ? sanitizeTermString(input.session_name) : undefined,
     outputStyle: input.output_style?.name ? sanitizeTermString(input.output_style.name) : undefined,
     agentName: input.agent?.name ? sanitizeTermString(input.agent.name) : undefined,
+    effortLevel: claude?.effort?.level && VALID_EFFORT_LEVELS.has(claude.effort.level)
+      ? sanitizeTermString(claude.effort.level)
+      : undefined,
     worktreeName: input.worktree?.name ? sanitizeTermString(input.worktree.name) : undefined,
     rateLimits,
     cacheHitRate,

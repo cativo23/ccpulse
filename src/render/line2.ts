@@ -29,11 +29,18 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
     leftParts.push(buildContextBar(pct, c, { iconSet: icons }));
   }
 
-  // Context tokens (estimated used/capacity from percentage)
-  if (display.contextTokens && input.tokens.input > 0 && input.context.usedPercentage > 0) {
-    const used = input.tokens.input;
-    const capacity = Math.round(used / (input.context.usedPercentage / 100));
-    leftParts.push(c.dim(`${formatTokens(used)}/${formatTokens(capacity)}`));
+  // Context tokens — prefer windowSize from payload over back-derivation.
+  // total_input_tokens is cumulative across the session; current context size
+  // is windowSize × usedPercentage / 100. Fallback derives capacity for legacy
+  // payloads without context_window_size.
+  if (display.contextTokens && input.context.usedPercentage > 0) {
+    const pct = input.context.usedPercentage;
+    const capacity = input.context.windowSize
+      ?? (input.tokens.input > 0 ? Math.round(input.tokens.input / (pct / 100)) : 0);
+    if (capacity > 0) {
+      const used = Math.round(capacity * pct / 100);
+      leftParts.push(c.dim(`${formatTokens(used)}/${formatTokens(capacity)}`));
+    }
   }
 
   // Tokens
@@ -114,9 +121,12 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
     rightParts.push(c.dim(`[${input.vimMode}]`));
   }
 
-  // Right side: effort (hidden if medium)
-  if (display.effort && thinkingEffort && thinkingEffort !== 'medium') {
-    rightParts.push(c.dim(`^${thinkingEffort}`));
+  // Right side: effort (hidden if medium). Prefer stdin (≥ 2.1.x) over the
+  // transcript regex fallback — it's both more accurate and avoids a fragile
+  // log-line match that breaks when wording changes.
+  const effort = input.effortLevel || thinkingEffort;
+  if (display.effort && effort && effort !== 'medium') {
+    rightParts.push(c.dim(`^${effort}`));
   }
 
   // Config health hints (opt-in, default off). Sit on the right side as

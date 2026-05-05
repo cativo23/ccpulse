@@ -39,6 +39,10 @@ export interface ClaudeCodeInput {
     seven_day?: RateLimitWindow;
   };
   exceeds_200k_tokens?: boolean;
+  /** Modern (≥ 2.1.x) — current reasoning effort level. */
+  effort?: { level?: string };
+  /** Modern (≥ 2.1.x) — extended thinking enabled state. */
+  thinking?: { enabled?: boolean };
 }
 
 export interface RateLimitWindow {
