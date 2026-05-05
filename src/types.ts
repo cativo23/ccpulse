@@ -231,6 +231,10 @@ export interface ColorConfig {
   mode: 'auto' | 'named' | '256' | 'truecolor';
 }
 
+/** Default thresholds — used as fallback when user-provided values are invalid. */
+export const DEFAULT_CONTEXT_WARNING_THRESHOLD = 70;
+export const DEFAULT_CONTEXT_CRITICAL_THRESHOLD = 85;
+
 export const DEFAULT_DISPLAY: DisplayToggles = {
   model: true,
   branch: true,
@@ -258,13 +262,9 @@ export const DEFAULT_DISPLAY: DisplayToggles = {
   cacheMetrics: true,
   mcp: true,
   health: false,
-  contextWarningThreshold: 70,
-  contextCriticalThreshold: 85,
+  contextWarningThreshold: DEFAULT_CONTEXT_WARNING_THRESHOLD,
+  contextCriticalThreshold: DEFAULT_CONTEXT_CRITICAL_THRESHOLD,
 };
-
-/** Default thresholds — used as fallback when user-provided values are invalid. */
-export const DEFAULT_CONTEXT_WARNING_THRESHOLD = 70;
-export const DEFAULT_CONTEXT_CRITICAL_THRESHOLD = 85;
 
 export const DEFAULT_CONFIG: HudConfig = {
   layout: 'auto',
