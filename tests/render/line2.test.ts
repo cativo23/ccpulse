@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { renderLine2, formatCountdown } from '../../src/render/line2.js';
 import { createColors, stripAnsi } from '../../src/render/colors.js';
 import { EMPTY_GIT, EMPTY_TRANSCRIPT, DEFAULT_CONFIG, DEFAULT_DISPLAY } from '../../src/types.js';
@@ -35,19 +35,6 @@ describe('renderLine2', () => {
   it('shows context bar with percentage', () => {
     const out = stripAnsi(renderLine2(makeCtx(), c));
     expect(out).toContain('55%');
-  });
-
-  it('does not show depletion ETA by default (opt-in)', () => {
-    const out = stripAnsi(renderLine2(makeCtx(), c));
-    expect(out).not.toContain('left');
-  });
-
-  it('shows depletion ETA when contextDepletionEta is enabled', () => {
-    const ctx = makeCtx({
-      config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, contextDepletionEta: true } },
-    });
-    const out = stripAnsi(renderLine2(ctx, c));
-    expect(out).toMatch(/· ~\d+(h\d+m|h|m) left/);
   });
 
   it('shows tokens', () => {
@@ -192,6 +179,78 @@ describe('renderLine2', () => {
     // High-priority segment (context bar) survives; low-priority rate limit drops.
     expect(out).toMatch(/\d+%/); // context % is present
     expect(out).not.toContain('75%(5h)'); // rate-limit segment got dropped
+  });
+});
+
+describe('renderLine2 — rate-limit depletion ETA (5h)', () => {
+  // Anchor "now" so ETA math is deterministic regardless of test wall-clock.
+  const NOW = 1_700_000_000_000;
+  const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
+
+  beforeEach(() => vi.useFakeTimers({ now: NOW }));
+  afterEach(() => vi.useRealTimers());
+
+  // Helper: build a 5h rate-limit window where `elapsedMs` has passed since the
+  // window opened. resetsAt is in seconds (matches Claude Code stdin convention).
+  const fiveHourWindow = (used: number, elapsedMs: number) => {
+    const windowStartMs = NOW - elapsedMs;
+    const resetsAtSec = (windowStartMs + FIVE_HOUR_MS) / 1000;
+    return { five_hour: { used_percentage: used, resets_at: resetsAtSec } };
+  };
+
+  const ctxWithEta = (rateLimits: any) =>
+    makeCtx({
+      config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, rateLimitEta: true } },
+    }, { rate_limits: rateLimits });
+
+  it('appends ETA at 75% with 1h elapsed (rate=1.25%/min → eta=20m)', () => {
+    // 75 / 60min = 1.25%/min; remaining 25 / 1.25 = 20 min
+    const out = stripAnsi(renderLine2(ctxWithEta(fiveHourWindow(75, 60 * 60_000)), c));
+    expect(out).toContain('75%(5h)');
+    expect(out).toContain('· ~20m left');
+  });
+
+  it('hides ETA when display.rateLimitEta is false (default)', () => {
+    const out = stripAnsi(renderLine2(makeCtx({}, { rate_limits: fiveHourWindow(75, 60 * 60_000) }), c));
+    expect(out).toContain('75%(5h)');
+    expect(out).not.toContain('left');
+  });
+
+  it('shows ETA at 51% with 4.5h elapsed (rate ≈ 0.189%/min → eta ≈ 4h19m)', () => {
+    // 51 / 270min ≈ 0.1889 %/min; remaining 49 / 0.1889 ≈ 259.4 min ≈ 4h19m
+    const out = stripAnsi(renderLine2(ctxWithEta(fiveHourWindow(51, 4.5 * 60 * 60_000)), c));
+    expect(out).toMatch(/· ~4h19m left/);
+  });
+
+  it('hides ETA when resetsAt is in the past (window already reset between renders)', () => {
+    const pastResetsSec = (NOW - 60_000) / 1000; // 1 minute ago
+    const out = stripAnsi(renderLine2(
+      ctxWithEta({ five_hour: { used_percentage: 75, resets_at: pastResetsSec } }),
+      c,
+    ));
+    // 75% renders the rate-limit segment, but ETA is suppressed.
+    expect(out).toContain('75%(5h)');
+    expect(out).not.toContain('left');
+  });
+
+  it('does not append ETA to the 7d window (out of scope this PR)', () => {
+    // 7d window with 75% used. The 5h window is absent so only 7d renders.
+    const out = stripAnsi(renderLine2(
+      ctxWithEta({ seven_day: { used_percentage: 75, resets_at: (NOW + FIVE_HOUR_MS) / 1000 } }),
+      c,
+    ));
+    expect(out).toContain('75%(7d)');
+    expect(out).not.toContain('left');
+  });
+
+  it('leaves existing rate-limit display unchanged when toggle is off', () => {
+    const out = stripAnsi(renderLine2(
+      makeCtx({}, { rate_limits: fiveHourWindow(72, 60 * 60_000) }),
+      c,
+    ));
+    // Existing behavior: 72% with countdown (no ETA suffix).
+    expect(out).toContain('72%(5h)');
+    expect(out).not.toContain('left');
   });
 });
 

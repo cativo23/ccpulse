@@ -40,14 +40,6 @@ describe('renderMinimal', () => {
     expect(out).toContain('project');
   });
 
-  it('shows depletion ETA on the bar when contextDepletionEta is enabled', () => {
-    const ctx = makeCtx({
-      config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, contextDepletionEta: true } },
-    });
-    const out = stripAnsi(renderMinimal(ctx, c));
-    expect(out).toMatch(/· ~\d+(h\d+m|h|m) left/);
-  });
-
   it('shows branch', () => {
     const out = stripAnsi(renderMinimal(makeCtx({ git }), c));
     expect(out).toContain('main');

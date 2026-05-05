@@ -219,11 +219,11 @@ export interface DisplayToggles {
   mcp: boolean;
   health: boolean;
   /**
-   * When true, append a context-depletion ETA to the context bar (e.g. `~2h15m left`).
-   * Computed from session duration and used percentage. Opt-in for v1.0; promote to
-   * default after soak testing. See buildContextBar for gating rules.
+   * When true, append a depletion ETA to the 5h rate-limit segment (e.g. `~2h15m left`).
+   * Computed from elapsed time in the current 5h window and used percentage. Opt-in for
+   * v1.0. See renderLine2 for gating rules.
    */
-  contextDepletionEta: boolean;
+  rateLimitEta: boolean;
   /**
    * Percentage at which the context bar turns orange and shows the fire icon. Default 70. Clamped [0,100].
    * Setting this ≤ 50 collapses the yellow zone; the bar jumps green→orange directly at this value.
@@ -268,7 +268,7 @@ export const DEFAULT_DISPLAY: DisplayToggles = {
   cacheMetrics: true,
   mcp: true,
   health: false,
-  contextDepletionEta: false,
+  rateLimitEta: false,
   contextWarningThreshold: DEFAULT_CONTEXT_WARNING_THRESHOLD,
   contextCriticalThreshold: DEFAULT_CONTEXT_CRITICAL_THRESHOLD,
 };

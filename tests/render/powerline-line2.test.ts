@@ -46,14 +46,6 @@ describe('renderPowerlineLine2', () => {
     expect(out).toContain('$');
   });
 
-  it('renders depletion ETA inside the context bar segment when enabled', () => {
-    const ctx = makeCtx({
-      config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, contextDepletionEta: true } },
-    });
-    const out = stripAnsi(renderPowerlineLine2(ctx, 'truecolor', null, c));
-    expect(out).toMatch(/· ~\d+(h\d+m|h|m) left/);
-  });
-
   it('uses context_window_size as capacity, not back-derived from cumulative input', () => {
     // total_input_tokens (957k) is cumulative; real context = 18% of 1M = 180k.
     // Pre-fix would have shown 957k/5.3M (back-derived from 957k/0.18).

@@ -1,6 +1,6 @@
 import { NERD_ICONS, type IconSet } from './icons.js';
 import { getContextColor, type Colors } from './colors.js';
-import { formatTokens, formatEtaMinutes } from '../utils/format.js';
+import { formatTokens } from '../utils/format.js';
 import { DEFAULT_CONTEXT_WARNING_THRESHOLD, DEFAULT_CONTEXT_CRITICAL_THRESHOLD, type GitStatus } from '../types.js';
 import type { NormalizedInput } from '../normalize.js';
 
@@ -32,17 +32,7 @@ export interface ContextBarOpts {
   warningThreshold?: number;
   /** Percentage at which the bar turns red/blinking and shows the skull icon. Default 85. */
   criticalThreshold?: number;
-  /** When true, append a depletion ETA (e.g. ` · ~2h15m left`) computed from `durationMs`. */
-  showEta?: boolean;
-  /** Session duration in ms — required for ETA computation. */
-  durationMs?: number;
 }
-
-// Depletion-ETA gates. Defined here so test-side callers can mirror them
-// without exporting a stale duplicate.
-const MIN_UTILIZATION_RATE = 0.01; // %/min — below this, ETA is too noisy to show
-const MAX_DISPLAY_MINUTES = 1440;  // 24h — above this, ETA is effectively infinite
-const MIN_SESSION_MS = 60_000;     // 1 minute — below this, fill rate is unreliable
 
 function adaptiveSegments(cols?: number): number {
   if (cols == null || cols >= 100) return 20;
@@ -84,24 +74,7 @@ export function buildContextBar(pct: number, c: Colors, opts?: ContextBarOpts): 
 
   const pctStr = colorFn(`${pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`);
 
-  // Depletion ETA — auxiliary signal, dimmed so it reads as info not alarm.
-  // Formula: eta_minutes = remaining_pct / (used_pct / session_minutes).
-  // Gates protect against noise: under-1m sessions (rate not yet meaningful),
-  // 0% used (division by zero), negligible fill rate, and effectively-infinite ETAs.
-  let etaStr = '';
-  if (opts?.showEta && opts.durationMs != null && opts.durationMs >= MIN_SESSION_MS && pct > 0) {
-    const sessionMinutes = opts.durationMs / 60_000;
-    const rate = pct / sessionMinutes; // %/min
-    if (rate >= MIN_UTILIZATION_RATE) {
-      const remaining = Math.max(0, 100 - pct);
-      const eta = remaining / rate;
-      if (eta <= MAX_DISPLAY_MINUTES) {
-        etaStr = ' ' + c.dim(`· ~${formatEtaMinutes(eta)} left`);
-      }
-    }
-  }
-
-  const out = `${bar} ${pctStr}${icon ? ' ' + icon : ''}${hint}${etaStr}`;
+  const out = `${bar} ${pctStr}${icon ? ' ' + icon : ''}${hint}`;
   if (plain) {
     // Inside a powerline segment, a literal `\x1b[0m` would clear the
     // caller-set background and leak the terminal default bg through the
