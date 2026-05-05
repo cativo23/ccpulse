@@ -87,8 +87,7 @@ export function getContextColor(
   warning = 70,
   critical = 85,
 ): ColorName {
-  if (pct < 50) return 'green';
-  if (pct < warning) return 'yellow';
+  if (pct < warning) return pct < 50 ? 'green' : 'yellow';
   if (pct < critical) return 'orange';
   return 'blinkRed';
 }

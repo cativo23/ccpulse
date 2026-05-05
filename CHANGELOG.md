@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Configurable context bar thresholds** — `display.contextWarningThreshold` (default `70`) and `display.contextCriticalThreshold` (default `85`) let users tune when the context bar transitions through yellow/orange/red. Set both lower if you prefer earlier warnings, or higher if your workflow tolerates fuller buffers.
+
+### Changed
+- **Default color transitions shifted from 50/65/80 to 50/70/85.** The bar now stays yellow up to 70% (was 65%) and orange up to 85% (was 80%) before flashing red. If you preferred the old behavior, set `display.contextWarningThreshold: 65` and `display.contextCriticalThreshold: 80` in your config.
+
+### Fixed
+- **`getContextColor` now respects custom warning thresholds below the 50% green floor.** Previously a hardcoded `pct < 50 → green` short-circuit ignored `contextWarningThreshold` when set below 50, so a user with `contextWarningThreshold: 30` would still see green at 40%. The function now only returns green when both `pct < warning` and `pct < 50`.
+
 ## [0.7.1] - 2026-05-04
 
 ### Fixed
