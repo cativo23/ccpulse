@@ -123,7 +123,33 @@ export function normalize(input: RawInput): NormalizedInput {
       thoughts = first.tokens?.thoughts;
     }
   } else if (claude) {
-    cached = claude.context_window?.cache_read_input_tokens;
+    // Modern Claude Code (≥ 2.1.x) nests cache fields under current_usage.
+    // Fall back to the legacy top-level path for older payloads.
+    const cu = claude.context_window?.current_usage;
+    const nested = typeof cu === 'object' ? cu?.cache_read_input_tokens : undefined;
+    cached = nested ?? claude.context_window?.cache_read_input_tokens;
+  }
+
+  // Per-turn cache denominator (Claude only): fresh input + cache_read + cache_creation
+  // for the current turn. Used to compute a meaningful cache hit rate, since
+  // `cached` is per-turn while `total_input_tokens` is cumulative across the session.
+  // Falls back to total_input_tokens for legacy payloads without current_usage.
+  let cacheTurnDenominator: number | undefined;
+  if (claude) {
+    const cu = claude.context_window?.current_usage;
+    if (typeof cu === 'object' && cu) {
+      const fresh = cu.input_tokens ?? 0;
+      const read = cu.cache_read_input_tokens ?? 0;
+      const create = cu.cache_creation_input_tokens ?? 0;
+      const total = fresh + read + create;
+      if (total > 0) cacheTurnDenominator = total;
+    }
+    // Legacy fallback: top-level totals (pre-2.1.x payloads, or current_usage
+    // without cache fields). The Math.min(100, ...) cap below protects against
+    // overflow when cache_read accumulates past total_input in long sessions.
+    if (cacheTurnDenominator == null && inputTokens > 0) {
+      cacheTurnDenominator = inputTokens;
+    }
   }
 
   // Performance (Qwen only)
@@ -160,9 +186,10 @@ export function normalize(input: RawInput): NormalizedInput {
     };
   }
 
-  // Cache hit rate (Claude only)
-  const cacheHitRate = (cached != null && inputTokens > 0 && platform === 'claude-code')
-    ? Math.round((cached / inputTokens) * 100)
+  // Cache hit rate (Claude only) — denominator is the current turn's total input
+  // (fresh + cache_read + cache_creation), not the cumulative session total.
+  const cacheHitRate = (cached != null && cached > 0 && cacheTurnDenominator && platform === 'claude-code')
+    ? Math.min(100, Math.round((cached / cacheTurnDenominator) * 100))
     : undefined;
 
   return {

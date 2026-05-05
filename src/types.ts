@@ -10,9 +10,15 @@ export interface ClaudeCodeInput {
     context_window_size?: number;
     used_percentage: number;
     remaining_percentage: number;
-    current_usage?: number | { output_tokens: number };
+    current_usage?: number | {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_read_input_tokens?: number;
+      cache_creation_input_tokens?: number;
+    };
     total_input_tokens?: number;
     total_output_tokens?: number;
+    /** Legacy top-level path; modern payloads nest these under current_usage. */
     cache_read_input_tokens?: number;
     cache_creation_input_tokens?: number;
   };

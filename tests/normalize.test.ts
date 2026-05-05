@@ -317,6 +317,35 @@ describe('cacheHitRate normalization', () => {
   it('cacheHitRate is undefined for Qwen', () => {
     expect(normalize(qwenInput).cacheHitRate).toBeUndefined();
   });
+  it('reads cache fields from nested current_usage (modern 2.1.x payload)', () => {
+    const input = {
+      ...claudeInput,
+      context_window: {
+        ...claudeInput.context_window,
+        current_usage: { input_tokens: 50000, cache_read_input_tokens: 80000, cache_creation_input_tokens: 20000 },
+      },
+    };
+    // 80000 / (50000 + 80000 + 20000) = 53%
+    expect(normalize(input).cacheHitRate).toBe(53);
+  });
+  it('caps hit rate at 100 when cache_read exceeds total_input on legacy payload', () => {
+    const input = { ...claudeInput, context_window: { ...claudeInput.context_window, cache_read_input_tokens: 5000000, total_input_tokens: 957000 } };
+    expect(normalize(input).cacheHitRate).toBe(100);
+  });
+  it('falls back to total_input denominator when current_usage has no cache fields', () => {
+    // Modern payload but partial — only output_tokens (no cache_read/creation/input).
+    // Cached comes from legacy top-level; denominator falls back to total_input_tokens.
+    const input = {
+      ...claudeInput,
+      context_window: {
+        ...claudeInput.context_window,
+        current_usage: { output_tokens: 25000 },
+        cache_read_input_tokens: 100000,
+        total_input_tokens: 131000,
+      },
+    };
+    expect(normalize(input).cacheHitRate).toBe(76);
+  });
 });
 
 describe('isQwenInput discriminant', () => {

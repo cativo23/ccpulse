@@ -3,8 +3,10 @@ import { tmpdir } from 'node:os';
 
 const SPEED_CACHE_TTL = 2000;
 interface SpeedCache { outputTokens: number; timestamp: number; }
-// current_usage: Claude sends {output_tokens: number}, Qwen sends plain number (20369)
-interface ContextWindow { used_percentage: number; remaining_percentage: number; current_usage?: number | { output_tokens: number }; }
+// current_usage shape: Claude Code 2.1.x sends an object with input/output/cache fields,
+// older Claude versions sent {output_tokens: number}, Qwen sends a plain number (20369).
+// We only need output_tokens here for token speed; ignore the rest.
+interface ContextWindow { used_percentage: number; remaining_percentage: number; current_usage?: number | { output_tokens?: number }; }
 
 export function getTokenSpeed(contextWindow: ContextWindow, cacheDir: string = tmpdir()): number | null {
   const cu = contextWindow?.current_usage;
