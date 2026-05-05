@@ -210,6 +210,16 @@ describe('renderLine2 — rate-limit depletion ETA (5h)', () => {
     expect(out).toContain('· ~20m left');
   });
 
+  it('shows ETA at 65% (no countdown, no leading bullet separator)', () => {
+    // 50–69% range: countdown is gated at >=70%, so the ETA must not get a
+    // leading `·` — that would dangle with nothing before it.
+    // 65 / 120min ≈ 0.5417 %/min; remaining 35 / 0.5417 ≈ 64.6 min ≈ 1h04m.
+    const out = stripAnsi(renderLine2(ctxWithEta(fiveHourWindow(65, 2 * 60 * 60_000)), c));
+    expect(out).toContain('65%(5h)');
+    expect(out).toMatch(/65%\(5h\) ~1h05m left/);
+    expect(out).not.toMatch(/65%\(5h\) ·/);
+  });
+
   it('hides ETA when display.rateLimitEta is false (default)', () => {
     const out = stripAnsi(renderLine2(makeCtx({}, { rate_limits: fiveHourWindow(75, 60 * 60_000) }), c));
     expect(out).toContain('75%(5h)');
@@ -218,8 +228,10 @@ describe('renderLine2 — rate-limit depletion ETA (5h)', () => {
 
   it('shows ETA at 51% with 4.5h elapsed (rate ≈ 0.189%/min → eta ≈ 4h19m)', () => {
     // 51 / 270min ≈ 0.1889 %/min; remaining 49 / 0.1889 ≈ 259.4 min ≈ 4h19m
+    // 51% is below the >=70% countdown gate, so no leading `·` separator.
     const out = stripAnsi(renderLine2(ctxWithEta(fiveHourWindow(51, 4.5 * 60 * 60_000)), c));
-    expect(out).toMatch(/· ~4h19m left/);
+    expect(out).toMatch(/51%\(5h\) ~4h19m left/);
+    expect(out).not.toMatch(/51%\(5h\) ·/);
   });
 
   it('hides ETA when resetsAt is in the past (window already reset between renders)', () => {

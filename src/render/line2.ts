@@ -7,14 +7,17 @@ import type { RenderContext } from '../types.js';
 
 // Rate-limit depletion ETA gates. Mirrors the original claude-dashboard widget:
 // computes %/min from elapsed time in the 5h window, projects when usage will
-// hit 100%, and hides when the signal is too noisy or effectively infinite.
+// hit 100%, and hides when the signal is too noisy.
 const MIN_UTILIZATION_RATE = 0.01; // %/min — below this, projection is too noisy
-const MAX_DISPLAY_MINUTES = 24 * 60; // 24h — above this, hide as effectively infinite
 const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
 
 /**
  * Compute the projected number of minutes until the 5h rate-limit window hits 100%.
  * Returns null when the signal should be hidden — see gates inline.
+ *
+ * Note: max eta ≈ 300min by window construction (5h window + ≥50% render gate
+ * upstream means eta is geometrically bounded by the remaining window time);
+ * no explicit upper cap needed.
  */
 function computeFiveHourEtaMinutes(usedPercentage: number, resetsAtMs: number, nowMs: number): number | null {
   const windowStartMs = resetsAtMs - FIVE_HOUR_MS;
@@ -23,7 +26,7 @@ function computeFiveHourEtaMinutes(usedPercentage: number, resetsAtMs: number, n
   const rate = usedPercentage / elapsedMin; // %/min
   if (rate < MIN_UTILIZATION_RATE) return null;
   const eta = (100 - usedPercentage) / rate;
-  if (eta <= 0 || eta > MAX_DISPLAY_MINUTES) return null;
+  if (eta <= 0) return null;
   return eta;
 }
 
@@ -120,20 +123,23 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
       if (!win || win.usedPercentage < 50) continue;
       const colorFn = c[getQuotaColor(win.usedPercentage)];
       let limitStr = colorFn(`${icons.bolt} ${win.usedPercentage.toFixed(0)}%(${label})`);
+      let countdown = '';
       if (win.usedPercentage >= 70 && win.resetsAt) {
-        const countdown = formatCountdown(win.resetsAt);
+        countdown = formatCountdown(win.resetsAt);
         if (countdown) limitStr += c.dim(` ${countdown}`);
       }
       // Rate-limit depletion ETA — only for the 5h window in this PR. Opt-in via
       // display.rateLimitEta. Resets-at is normalized seconds-or-ms (see
-      // formatCountdown) so we coerce to ms here too.
+      // formatCountdown) so we coerce to ms here too. Use `·` as a separator
+      // only when the countdown precedes us; otherwise the bullet would dangle.
       if (display.rateLimitEta && label === '5h' && win.resetsAt) {
         const resetsAtMs = win.resetsAt < 1e12 ? win.resetsAt * 1000 : win.resetsAt;
         const now = Date.now();
         if (resetsAtMs > now) {
           const eta = computeFiveHourEtaMinutes(win.usedPercentage, resetsAtMs, now);
           if (eta != null) {
-            limitStr += c.dim(` · ~${formatEtaMinutes(eta)} left`);
+            const sep = countdown ? ' · ' : ' ';
+            limitStr += c.dim(`${sep}~${formatEtaMinutes(eta)} left`);
           }
         }
       }
