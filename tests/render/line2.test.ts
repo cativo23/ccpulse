@@ -112,6 +112,22 @@ describe('renderLine2', () => {
     expect(out).toContain('76%');
   });
 
+  it('reads cache hit rate from nested current_usage (modern 2.1.x payload)', () => {
+    const inputOverride = {
+      context_window: {
+        ...baseInput.context_window,
+        current_usage: {
+          input_tokens: 50000,
+          cache_read_input_tokens: 80000,
+          cache_creation_input_tokens: 20000,
+        },
+      },
+    };
+    const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
+    // 80000 / (50000 + 80000 + 20000) = 53%
+    expect(out).toContain('cache 53%');
+  });
+
   it('caps cache hit rate at 100% when cache_read exceeds total_input (long sessions)', () => {
     const inputOverride = { context_window: { ...baseInput.context_window, cache_read_input_tokens: 5000000, total_input_tokens: 957000 } };
     const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));

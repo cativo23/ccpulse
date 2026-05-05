@@ -47,13 +47,8 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
   }
 
   // Cache metrics (hit rate)
-  if (display.cacheMetrics) {
-    const cacheRead = input.tokens.cached;
-    const totalIn = input.tokens.input;
-    if (cacheRead != null && cacheRead > 0 && totalIn > 0) {
-      const hitRate = Math.min(100, Math.round((cacheRead / totalIn) * 100));
-      leftParts.push(c.dim(`cache ${hitRate}%`));
-    }
+  if (display.cacheMetrics && input.cacheHitRate != null) {
+    leftParts.push(c.dim(`cache ${input.cacheHitRate}%`));
   }
 
   // Cost + burn rate (Claude only — Qwen doesn't send cost data)
