@@ -76,8 +76,10 @@ describe('formatEtaMinutes', () => {
     expect(formatEtaMinutes(600)).toBe('10h');
     expect(formatEtaMinutes(1440)).toBe('24h');
   });
-  it('formats mixed hours and minutes', () => {
+  it('formats mixed hours and minutes with zero-padded minutes', () => {
+    expect(formatEtaMinutes(61)).toBe('1h01m');
     expect(formatEtaMinutes(75)).toBe('1h15m');
+    expect(formatEtaMinutes(125)).toBe('2h05m');
     expect(formatEtaMinutes(135)).toBe('2h15m');
   });
   it('rounds fractional minutes to nearest', () => {

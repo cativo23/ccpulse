@@ -31,7 +31,7 @@ export function formatBurnRate(costUsd: number, durationMs: number): string | nu
 /**
  * Compact ETA formatting for context-depletion display.
  *   < 60   → `${m}m`           e.g. 0m, 45m, 59m
- *   ≥ 60   → `${h}h` if minutes==0, else `${h}h${m}m`   e.g. 1h, 2h15m, 24h
+ *   ≥ 60   → `${h}h` if minutes==0, else `${h}h${mm}m` (zero-padded)   e.g. 1h, 1h01m, 2h15m, 24h
  * Negative inputs are clamped to 0; non-finite returns ''.
  */
 export function formatEtaMinutes(minutes: number): string {
@@ -40,5 +40,5 @@ export function formatEtaMinutes(minutes: number): string {
   if (total < 60) return `${total}m`;
   const h = Math.floor(total / 60);
   const m = total % 60;
-  return m === 0 ? `${h}h` : `${h}h${m}m`;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}m`;
 }

@@ -256,6 +256,24 @@ describe('buildContextBar — depletion ETA', () => {
     expect(bar).not.toContain('left');
   });
 
+  // Exact-boundary gate tests — verify the inclusive/exclusive edges of each gate.
+  it('shows ETA when durationMs === 60_000 exactly (MIN_SESSION_MS boundary, inclusive)', () => {
+    // pct=10 over 60s → rate=10%/min, remaining=90 → eta=9min.
+    const bar = stripAnsi(buildContextBar(10, c, { showEta: true, durationMs: 60_000 }));
+    expect(bar).toContain('· ~9m left');
+  });
+
+  // NOTE: rate === MIN_UTILIZATION_RATE (0.01 %/min) is not independently testable in isolation —
+  // at that minimum rate, any non-trivial remaining_pct produces eta > MAX_DISPLAY_MINUTES (1440),
+  // so the max-eta gate masks the rate-gate boundary. The two gates are mathematically coupled
+  // (eta = remaining / rate), so isolating one boundary requires violating the other.
+
+  it('shows ETA when computed eta === 1440 minutes exactly (MAX_DISPLAY_MINUTES boundary, inclusive)', () => {
+    // pct=20 over 360min → rate=0.0556 %/min, remaining=80 → eta=80/0.0556=1440min=24h.
+    const bar = stripAnsi(buildContextBar(20, c, { showEta: true, durationMs: 360 * 60_000 }));
+    expect(bar).toContain('· ~24h left');
+  });
+
   it('uses the dim color helper for the ETA text', () => {
     // Dim wraps with \x1b[2m … \x1b[0m. Verify the suffix is wrapped.
     const bar = buildContextBar(30, c, { showEta: true, durationMs: baseDuration });
