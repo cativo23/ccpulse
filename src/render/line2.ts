@@ -1,7 +1,7 @@
-import { padLine, displayWidth } from './text.js';
+import { fitSegments, displayWidth } from './text.js';
 import { getQuotaColor, detectColorMode, type Colors } from './colors.js';
 import { buildContextBar, formatQwenMetrics, SEP } from './shared.js';
-import { formatTokens, formatDuration, formatCost, formatBurnRate } from '../utils/format.js';
+import { formatTokens, formatCost, formatBurnRate } from '../utils/format.js';
 import { getConfigHealth } from '../parsers/config-health.js';
 import type { RenderContext } from '../types.js';
 
@@ -26,7 +26,7 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
   // Context bar
   if (display.contextBar) {
     const pct = input.context.usedPercentage;
-    leftParts.push(buildContextBar(pct, c, { iconSet: icons }));
+    leftParts.push(buildContextBar(pct, c, { iconSet: icons, cols }));
   }
 
   // Context tokens — prefer windowSize from payload over back-derivation.
@@ -69,16 +69,6 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
     leftParts.push(costPart);
   }
 
-  // Duration (Claude only)
-  if (display.duration && input.durationMs != null) {
-    leftParts.push(`${icons.clock} ${formatDuration(input.durationMs)}`);
-  }
-
-  // Memory
-  if (display.memory && memory) {
-    leftParts.push(c.dim(`${memory.percentage}% mem`));
-  }
-
   // MCP servers
   if (display.mcp && mcp) {
     const total = mcp.servers.length;
@@ -92,11 +82,6 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
 
   // Qwen metrics (shared helper)
   leftParts.push(...formatQwenMetrics(input, c, icons));
-
-  // Token speed
-  if (display.tokenSpeed && tokenSpeed != null) {
-    leftParts.push(c.dim(`${icons.bolt}${tokenSpeed} tok/s`));
-  }
 
   // Rate limits (only show if >=50%)
   if (display.rateLimits && input.rateLimits) {
@@ -154,7 +139,6 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
     }
   }
 
-  const leftStr = leftParts.join(SEP);
-  if (rightParts.length === 0) return leftStr;
-  return padLine(leftStr, rightParts.join(' '), cols);
+  if (leftParts.length === 0 && rightParts.length === 0) return '';
+  return fitSegments(leftParts, rightParts, SEP, cols);
 }

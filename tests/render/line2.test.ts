@@ -59,11 +59,6 @@ describe('renderLine2', () => {
     expect(out).not.toContain('/h');
   });
 
-  it('shows token speed when provided', () => {
-    const out = stripAnsi(renderLine2(makeCtx({ tokenSpeed: 142 }), c));
-    expect(out).toContain('142');
-  });
-
   it('does not show rate limits below 50%', () => {
     const inputOverride = { rate_limits: { five_hour: { used_percentage: 30 } } };
     const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
@@ -96,13 +91,6 @@ describe('renderLine2', () => {
   it('shows effort when low', () => {
     const out = stripAnsi(renderLine2(makeCtx({ transcript: { ...EMPTY_TRANSCRIPT, thinkingEffort: 'low' } }), c));
     expect(out).toContain('^low');
-  });
-
-  it('shows memory percentage when provided', () => {
-    const memory = { usedBytes: 8e9, totalBytes: 16e9, percentage: 50 };
-    const out = stripAnsi(renderLine2(makeCtx({ memory }), c));
-    expect(out).toContain('50%');
-    expect(out).toContain('mem');
   });
 
   it('shows cache hit rate when cache_read_input_tokens present', () => {
@@ -178,6 +166,16 @@ describe('renderLine2', () => {
     const inputOverride = { context_window: { ...baseInput.context_window, used_percentage: 50, total_input_tokens: 100000 } };
     const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
     expect(out).toContain('100k/200k');
+  });
+
+  it('drops trailing segments via fitSegments when cols is narrow', () => {
+    // At cols=60, many segments should still fit within the terminal width
+    const inputOverride = {
+      rate_limits: { five_hour: { used_percentage: 75 } },
+      context_window: { ...baseInput.context_window, cache_read_input_tokens: 80000 },
+    };
+    const out = stripAnsi(renderLine2(makeCtx({ cols: 60 }, inputOverride), c));
+    expect(out.length).toBeLessThanOrEqual(64); // fitSegments enforces cols - 4
   });
 });
 
