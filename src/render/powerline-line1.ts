@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { truncField } from './text.js';
+import { formatDuration } from '../utils/format.js';
 import { hyperlink } from './hyperlink.js';
 import {
   renderPowerline,
@@ -32,7 +33,7 @@ function getActiveTodo(transcript: TranscriptData): string | undefined {
  *   version:  20  (dropped first)
  */
 function buildSegments(ctx: RenderContext, palette: PowerlinePalette): PowerlineSegment[] {
-  const { input, git, transcript, config: { display }, icons } = ctx;
+  const { input, git, transcript, config: { display }, icons, memory, tokenSpeed } = ctx;
   const segments: PowerlineSegment[] = [];
 
   if (display.model) {
@@ -90,6 +91,35 @@ function buildSegments(ctx: RenderContext, palette: PowerlinePalette): Powerline
       bg: palette.taskBg,
       fg: palette.fg,
       priority: 40,
+    });
+  }
+
+  // System info — moved from line 2 in fix #82 to declutter the metrics line.
+  // Mirror the classic line1 right cluster: duration, memory, tokenSpeed.
+  if (display.duration && input.durationMs != null) {
+    segments.push({
+      text: `${icons.clock} ${formatDuration(input.durationMs)}`,
+      bg: palette.branchCleanBg,
+      fg: palette.fg,
+      priority: 35,
+    });
+  }
+
+  if (display.memory && memory) {
+    segments.push({
+      text: `${memory.percentage}% mem`,
+      bg: palette.branchCleanBg,
+      fg: palette.fg,
+      priority: 30,
+    });
+  }
+
+  if (display.tokenSpeed && tokenSpeed != null) {
+    segments.push({
+      text: `${icons.bolt}${tokenSpeed} tok/s`,
+      bg: palette.branchCleanBg,
+      fg: palette.fg,
+      priority: 25,
     });
   }
 

@@ -14,7 +14,7 @@ function buildToolsPart(tools: ToolEntry[], c: Colors, ic: IconSet): string {
 
   const running = relevant.filter(t => t.status === 'running').slice(-2);
   for (const tool of running) {
-    const target = tool.target ? `: ${truncField(tool.target, 20)}` : '';
+    const target = tool.target ? `: ${truncField(tool.target, 14)}` : '';
     parts.push(c.yellow(`◐ ${tool.name}${target}`));
   }
 

@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { fitSegments, truncField } from './text.js';
 import { formatGitChanges, SEP } from './shared.js';
 import { hyperlink } from './hyperlink.js';
+import { formatDuration } from '../utils/format.js';
 import type { Colors } from './colors.js';
 import type { RenderContext, TranscriptData } from '../types.js';
 
@@ -12,7 +13,7 @@ function getActiveTodo(transcript: TranscriptData): string | undefined {
 }
 
 export function renderLine1(ctx: RenderContext, c: Colors): string {
-  const { input, git, transcript, config: { display }, cols, icons } = ctx;
+  const { input, git, transcript, config: { display }, cols, icons, memory, tokenSpeed } = ctx;
   const left: string[] = [];
   const right: string[] = [];
 
@@ -47,6 +48,21 @@ export function renderLine1(ctx: RenderContext, c: Colors): string {
       // spaces and non-ASCII chars correctly.
       left.push(hyperlink(pathToFileURL(cwd).href, label));
     }
+  }
+
+  // Duration (Claude only)
+  if (display.duration && input.durationMs != null) {
+    right.push(c.dim(`${icons.clock} ${formatDuration(input.durationMs)}`));
+  }
+
+  // Memory
+  if (display.memory && memory) {
+    right.push(c.dim(`${memory.percentage}% mem`));
+  }
+
+  // Token speed
+  if (display.tokenSpeed && tokenSpeed != null) {
+    right.push(c.dim(`${icons.bolt}${tokenSpeed} tok/s`));
   }
 
   // Lines changed (right side)

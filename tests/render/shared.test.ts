@@ -48,6 +48,39 @@ describe('buildContextBar', () => {
     const bar70 = buildContextBar(70, c, { showIcons: false });
     expect(bar70).not.toContain('\uF06D');
   });
+
+  it('uses 20 segments at cols >= 100 (adaptive default)', () => {
+    const bar100 = stripAnsi(buildContextBar(50, c, { cols: 120 }));
+    const barDefault = stripAnsi(buildContextBar(50, c));
+    expect(bar100.length).toBe(barDefault.length);
+  });
+
+  it('uses 12 segments at cols=60-99 (adaptive)', () => {
+    const bar60 = stripAnsi(buildContextBar(50, c, { cols: 60 }));
+    const bar100 = stripAnsi(buildContextBar(50, c, { cols: 120 }));
+    // 12-segment bar is shorter than 20-segment
+    expect(bar60.length).toBeLessThan(bar100.length);
+  });
+
+  it('uses 8 segments at cols < 60 (adaptive)', () => {
+    const bar50 = stripAnsi(buildContextBar(50, c, { cols: 59 }));
+    const bar60 = stripAnsi(buildContextBar(50, c, { cols: 60 }));
+    // 8-segment bar is shorter than 12-segment
+    expect(bar50.length).toBeLessThan(bar60.length);
+  });
+
+  it('pins exact bar lengths at boundaries (regression guard)', () => {
+    // The bar prefix counts filled+empty cells; the rest is " 50%" suffix.
+    const cellsAt = (cols: number) => {
+      const out = stripAnsi(buildContextBar(50, c, { cols }));
+      const m = out.match(/^[█░]+/);
+      return m ? m[0].length : 0;
+    };
+    expect(cellsAt(100)).toBe(20); // exact boundary: ≥100 → 20
+    expect(cellsAt(99)).toBe(12);  // one below → 12
+    expect(cellsAt(60)).toBe(12);  // exact boundary: ≥60 → 12
+    expect(cellsAt(59)).toBe(8);   // one below → 8
+  });
 });
 
 describe('formatGitChanges', () => {

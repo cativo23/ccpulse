@@ -106,4 +106,39 @@ describe('renderLine1', () => {
     const out = stripAnsi(renderLine1(makeCtx({ git: { ...git, branch: longBranch }, cols: 120 }), c));
     expect(out.length).toBeLessThanOrEqual(120);
   });
+
+  it('shows duration when display.duration is true and durationMs is set', () => {
+    const out = stripAnsi(renderLine1(makeCtx(), c));
+    // baseInput has total_duration_ms: 60000 → 1m00s
+    expect(out).toContain('1m00s');
+  });
+
+  it('hides duration when display.duration is false', () => {
+    const out = stripAnsi(renderLine1(makeCtx({ config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, duration: false } } }), c));
+    expect(out).not.toContain('m00s');
+  });
+
+  it('shows memory when provided and display.memory is true', () => {
+    const memory = { usedBytes: 8e9, totalBytes: 16e9, percentage: 50 };
+    const out = stripAnsi(renderLine1(makeCtx({ memory }), c));
+    expect(out).toContain('50%');
+    expect(out).toContain('mem');
+  });
+
+  it('hides memory when display.memory is false', () => {
+    const memory = { usedBytes: 8e9, totalBytes: 16e9, percentage: 50 };
+    const out = stripAnsi(renderLine1(makeCtx({ memory, config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, memory: false } } }), c));
+    expect(out).not.toContain('mem');
+  });
+
+  it('shows tokenSpeed when provided and display.tokenSpeed is true', () => {
+    const out = stripAnsi(renderLine1(makeCtx({ tokenSpeed: 142 }), c));
+    expect(out).toContain('142');
+    expect(out).toContain('tok/s');
+  });
+
+  it('hides tokenSpeed when display.tokenSpeed is false', () => {
+    const out = stripAnsi(renderLine1(makeCtx({ tokenSpeed: 142, config: { ...DEFAULT_CONFIG, display: { ...DEFAULT_DISPLAY, tokenSpeed: false } } }), c));
+    expect(out).not.toContain('tok/s');
+  });
 });

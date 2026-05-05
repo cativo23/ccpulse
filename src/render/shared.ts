@@ -22,10 +22,18 @@ export interface ContextBarOpts {
    * the powerline renderer; classic mode leaves it false.
    */
   plain?: boolean;
+  /** Terminal width; used to pick an adaptive segment count when `segments` is not set. */
+  cols?: number;
+}
+
+function adaptiveSegments(cols?: number): number {
+  if (cols == null || cols >= 100) return 20;
+  if (cols >= 60) return 12;
+  return 8;
 }
 
 export function buildContextBar(pct: number, c: Colors, opts?: ContextBarOpts): string {
-  const segments = opts?.segments ?? 20;
+  const segments = opts?.segments ?? adaptiveSegments(opts?.cols);
   const showIcons = opts?.showIcons ?? true;
   const showHint = opts?.showHint ?? true;
   const plain = opts?.plain ?? false;
