@@ -8,6 +8,15 @@ describe('displayWidth', () => {
   it('counts CJK as 2', () => { expect(displayWidth('\u4E16')).toBe(2); });
   it('counts emoji as 2', () => { expect(displayWidth('\u{1F600}')).toBe(2); });
   it('counts block chars as 1', () => { expect(displayWidth('\u2588\u2591')).toBe(2); });
+  // Nerd Font BMP-PUA (fa-robot U+F418) and Supplementary PUA-A
+  // (nf-md-battery U+F0083) glyphs both render single-cell on patched fonts;
+  // width must reflect that or fitSegments over-reserves space.
+  it('counts Nerd Font BMP-PUA glyphs as 1', () => { expect(displayWidth('\uf418')).toBe(1); });
+  it('counts Nerd Font Supplementary PUA-A glyphs as 1', () => {
+    expect(displayWidth('\u{F0083}')).toBe(1); // battery_alert
+    expect(displayWidth('\u{F0079}')).toBe(1); // battery (full)
+    expect(displayWidth('\u{F008E}')).toBe(1); // battery_outline
+  });
 });
 
 describe('truncField', () => {

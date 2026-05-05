@@ -47,7 +47,7 @@ Claude Code's default statusline shows the model name and current directory. Tha
 
 - **Context-window pressure** — color-coded bar from green to blinking red, with a `/compact?` hint at high fill so you act before hitting the wall.
 - **Burn rate** — `$/h` next to total cost, so a runaway agent shows up immediately.
-- **Rate-limit countdown** — 5h/7d usage with reset countdown, so you stop guessing how much budget you have left.
+- **Rate-limit battery** — 5h/7d usage shows as a Nerd Font battery glyph (or 🔋/🪫 in emoji mode) that fills as you consume quota, with a reset countdown above 70%. Hidden below 50% to keep the line uncluttered when you have margin.
 - **Active tools, agents, and todo progress** — parsed from the live transcript, updated every render.
 - **Cross-platform** — same config drives Claude Code and Qwen Code; Qwen sessions auto-collapse to single-line.
 
@@ -74,7 +74,7 @@ Inspired by [claude-hud](https://github.com/jarrodwatts/claude-hud); takes a dif
 <summary>Everything else lumira shows</summary>
 
 - **Git status** — branch + staged/modified/untracked counts, 5s TTL cache. Branch turns red on dirty repos in powerline mode.
-- **Rate limits** — 5h/7d usage with color warnings and reset countdown.
+- **Rate limits** — 5h/7d usage as a battery glyph (Nerd Font level fill, or 🔋/🪫 in emoji mode) with color tier and reset countdown. Threshold-gated at 50% to stay invisible while you have margin.
 - **Active agents** — running subagent count and types from the transcript.
 - **GSD integration** — current task and update notifications (opt-in).
 - **Config health widget** — surfaces silent fallbacks (theme/powerline degrading in named-ANSI, missing GSD STATE.md). Opt-in.

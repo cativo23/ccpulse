@@ -16,26 +16,83 @@ export interface IconSet {
   ellipsis: string;
   dash: string;
   checkmark: string;
+  /**
+   * Battery glyph keyed by usedPercentage. Replaces the bolt prefix on
+   * rate-limit segments with a visual fuel gauge so the icon itself signals
+   * level before the user parses the number.
+   *
+   * Per-implementation contract:
+   * - `nerd`: 11 Material Design glyphs by 10% bucket; alert (`󰂃`) reserved
+   *   for the 100% ceiling. Bucket dispatch matches `.toFixed(0)` rounding so
+   *   the displayed `%` text and the glyph never disagree.
+   * - `emoji`: two-state — 🔋 below 85, 🪫 at/above. Intentional divergence
+   *   from nerd's ceiling-only alert: emoji has no per-decile gradient, so
+   *   the single tier flip rides the colour escalation at QUOTA_CRITICAL.
+   * - `none`: empty string for all inputs (icon-less mode contract).
+   *
+   * Out-of-range / malformed inputs (NaN, negative, Infinity) are NOT the
+   * responsibility of this method — callers MUST gate with `Number.isFinite`
+   * and a sane range check before invoking. `nerdBattery` defends with an
+   * outline fallback as a last line of safety; the other modes do not.
+   */
+  battery: (pct: number) => string;
+}
+
+// Emoji boundary mirrors getQuotaColor's blinkRed cutoff at 85% — the two-state
+// 🔋/🪫 split has nowhere else to put a "ceiling" marker, so urgency switches
+// at the colour tier. The Nerd Font ladder below has 11 levels and reserves
+// alert for 100% only.
+const QUOTA_CRITICAL = 85;
+
+/**
+ * Pick the Material Design Nerd Font battery glyph for a given percentage.
+ *
+ * Bucket dispatch uses `Math.round(pct)` to align with the `.toFixed(0)` text
+ * rendered alongside the glyph: a payload of 99.7 displays as "100%" so it
+ * must also pick the alert glyph — anything else creates a visible
+ * contradiction (text says ceiling, shape doesn't).
+ *
+ * The alert glyph is reserved for the 100% ceiling — the moment quota is
+ * actually exhausted. Below that, the level glyph reads naturally
+ * (battery_80, battery_90...) and the urgency tier is carried by the colour
+ * (yellow/orange/red via `getQuotaColor`). Color and glyph encode orthogonal
+ * info: tier vs level. Alert at 100% says "you hit the ceiling".
+ */
+function nerdBattery(pct: number): string {
+  if (!Number.isFinite(pct) || pct < 0) return '\u{F008E}'; // outline — defensive last line
+  const rounded = Math.round(pct);
+  if (rounded >= 100) return '\u{F0083}'; // battery_alert — quota exhausted
+  if (rounded >= 90)  return '\u{F0082}';
+  if (rounded >= 80)  return '\u{F0081}';
+  if (rounded >= 70)  return '\u{F0080}';
+  if (rounded >= 60)  return '\u{F007F}';
+  if (rounded >= 50)  return '\u{F007E}';
+  if (rounded >= 40)  return '\u{F007D}';
+  if (rounded >= 30)  return '\u{F007C}';
+  if (rounded >= 20)  return '\u{F007B}';
+  if (rounded >= 10)  return '\u{F007A}';
+  return '\u{F008E}';                     // battery_outline — empty/unknown
 }
 
 export const NERD_ICONS: IconSet = {
-  model:     '\uEE0D',  // fa-robot
-  branch:    '\uE725',  // dev-git-branch
-  folder:    '\uF07C',  // fa-folder-open
-  fire:      '\uF06D',  // fa-fire
-  skull:     '\uEE15',  // fa-skull
-  comment:   '\uF075',  // fa-comment
-  clock:     '\uF017',  // fa-clock
-  bolt:      '\uF0E7',  // fa-bolt
-  tree:      '\uF1BB',  // fa-tree
-  cubes:     '\uF1B3',  // fa-cubes
-  hammer:    '\uEEFF',  // fa-hammer
-  warning:   '\uF071',  // fa-warning
-  barFull:   '\u2588',  // block full
-  barEmpty:  '\u2591',  // block light
-  ellipsis:  '\u2026',  // ...
-  dash:      '\u2014',  // em-dash
-  checkmark: '\u2713',  // checkmark
+  model:     '',  // fa-robot
+  branch:    '',  // dev-git-branch
+  folder:    '',  // fa-folder-open
+  fire:      '',  // fa-fire
+  skull:     '',  // fa-skull
+  comment:   '',  // fa-comment
+  clock:     '',  // fa-clock
+  bolt:      '',  // fa-bolt
+  tree:      '',  // fa-tree
+  cubes:     '',  // fa-cubes
+  hammer:    '',  // fa-hammer
+  warning:   '',  // fa-warning
+  barFull:   '█',  // block full
+  barEmpty:  '░',  // block light
+  ellipsis:  '…',  // ...
+  dash:      '—',  // em-dash
+  checkmark: '✓',  // checkmark
+  battery:   nerdBattery,
 };
 
 export const EMOJI_ICONS: IconSet = {
@@ -45,17 +102,20 @@ export const EMOJI_ICONS: IconSet = {
   fire:      '\u{1F525}', // 🔥
   skull:     '\u{1F480}', // 💀
   comment:   '\u{1F4AC}', // 💬
-  clock:     '\u{23F1}\uFE0F',  // ⏱️
-  bolt:      '\u26A1',    // ⚡
+  clock:     '\u{23F1}️',  // ⏱️
+  bolt:      '⚡',    // ⚡
   tree:      '\u{1F332}', // 🌲
   cubes:     '\u{1F4E6}', // 📦
   hammer:    '\u{1F528}', // 🔨
-  warning:   '\u26A0\uFE0F',   // ⚠️
-  barFull:   '\u2588',
-  barEmpty:  '\u2591',
-  ellipsis:  '\u2026',
-  dash:      '\u2014',
-  checkmark: '\u2705',    // ✅
+  warning:   '⚠️',   // ⚠️
+  barFull:   '█',
+  barEmpty:  '░',
+  ellipsis:  '…',
+  dash:      '—',
+  checkmark: '✅',    // ✅
+  // 🔋 → 🪫 at the critical boundary so colour and shape signal urgency in
+  // lockstep. Two states keeps emoji semantics simple — no per-decile gradient.
+  battery:   (pct: number) => (pct >= QUOTA_CRITICAL ? '\u{1FAAB}' : '\u{1F50B}'),
 };
 
 export const NO_ICONS: IconSet = {
@@ -71,11 +131,14 @@ export const NO_ICONS: IconSet = {
   cubes:     '',
   hammer:    '',
   warning:   '!',
-  barFull:   '\u2588',
-  barEmpty:  '\u2591',
-  ellipsis:  '\u2026',
-  dash:      '\u2014',
-  checkmark: '\u2713',
+  barFull:   '█',
+  barEmpty:  '░',
+  ellipsis:  '…',
+  dash:      '—',
+  checkmark: '✓',
+  // No-icon mode keeps the legacy bolt fallback (currently empty) so users who
+  // opted out of icons see no shape change from this feature.
+  battery:   () => '',
 };
 
 /** Resolve icon set from config value */
