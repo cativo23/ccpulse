@@ -176,6 +176,9 @@ describe('renderLine2', () => {
     };
     const out = stripAnsi(renderLine2(makeCtx({ cols: 60 }, inputOverride), c));
     expect(out.length).toBeLessThanOrEqual(64); // fitSegments enforces cols - 4
+    // High-priority segment (context bar) survives; low-priority rate limit drops.
+    expect(out).toMatch(/\d+%/); // context % is present
+    expect(out).not.toContain('75%(5h)'); // rate-limit segment got dropped
   });
 });
 

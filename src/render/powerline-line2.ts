@@ -5,7 +5,7 @@ import {
   type PowerlineStyleName,
 } from './powerline.js';
 import { buildContextBar } from './shared.js';
-import { formatTokens, formatCost, formatDuration } from '../utils/format.js';
+import { formatTokens, formatCost } from '../utils/format.js';
 import type { ColorMode, Colors } from './colors.js';
 import type { RenderContext } from '../types.js';
 import {
@@ -47,11 +47,6 @@ function buildSegments(ctx: RenderContext, palette: PowerlinePalette, c: Colors)
   // Cost
   if (display.cost && input.cost != null) {
     segments.push({ text: formatCost(input.cost), bg: palette.taskBg, fg: palette.fg, priority: 60 });
-  }
-
-  // Duration
-  if (display.duration && input.durationMs != null) {
-    segments.push({ text: `${icons.clock} ${formatDuration(input.durationMs)}`, bg: palette.branchCleanBg, fg: palette.fg, priority: 40 });
   }
 
   // Rate limits — only show if >=50%

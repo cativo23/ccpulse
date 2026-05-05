@@ -68,6 +68,19 @@ describe('buildContextBar', () => {
     // 8-segment bar is shorter than 12-segment
     expect(bar50.length).toBeLessThan(bar60.length);
   });
+
+  it('pins exact bar lengths at boundaries (regression guard)', () => {
+    // The bar prefix counts filled+empty cells; the rest is " 50%" suffix.
+    const cellsAt = (cols: number) => {
+      const out = stripAnsi(buildContextBar(50, c, { cols }));
+      const m = out.match(/^[█░]+/);
+      return m ? m[0].length : 0;
+    };
+    expect(cellsAt(100)).toBe(20); // exact boundary: ≥100 → 20
+    expect(cellsAt(99)).toBe(12);  // one below → 12
+    expect(cellsAt(60)).toBe(12);  // exact boundary: ≥60 → 12
+    expect(cellsAt(59)).toBe(8);   // one below → 8
+  });
 });
 
 describe('formatGitChanges', () => {
