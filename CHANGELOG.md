@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-05-05
+
 ### Added
 - **Configurable context bar thresholds** — `display.contextWarningThreshold` (default `70`) and `display.contextCriticalThreshold` (default `85`) let users tune when the context bar transitions through yellow/orange/red. Set both lower if you prefer earlier warnings, or higher if your workflow tolerates fuller buffers.
 
@@ -251,7 +253,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GSD session IDs sanitized against path traversal
 - `execFile` used instead of `exec` to prevent shell injection (except terminal width detection where shell redirect is required with procfs-sourced paths)
 
-[Unreleased]: https://github.com/cativo23/lumira/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/cativo23/lumira/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/cativo23/lumira/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/cativo23/lumira/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/cativo23/lumira/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/cativo23/lumira/compare/v0.6.1...v0.6.2
