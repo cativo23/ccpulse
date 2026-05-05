@@ -144,7 +144,9 @@ export function normalize(input: RawInput): NormalizedInput {
       const total = fresh + read + create;
       if (total > 0) cacheTurnDenominator = total;
     }
-    // Legacy fallback: top-level totals (pre-2.1.x payloads)
+    // Legacy fallback: top-level totals (pre-2.1.x payloads, or current_usage
+    // without cache fields). The Math.min(100, ...) cap below protects against
+    // overflow when cache_read accumulates past total_input in long sessions.
     if (cacheTurnDenominator == null && inputTokens > 0) {
       cacheTurnDenominator = inputTokens;
     }
