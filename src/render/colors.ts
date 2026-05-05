@@ -82,10 +82,13 @@ export function detectColorMode(): ColorMode {
   return 'named';
 }
 
-export function getContextColor(pct: number): ColorName {
-  if (pct < 50) return 'green';
-  if (pct < 65) return 'yellow';
-  if (pct < 80) return 'orange';
+export function getContextColor(
+  pct: number,
+  warning = 70,
+  critical = 85,
+): ColorName {
+  if (pct < warning) return pct < 50 ? 'green' : 'yellow';
+  if (pct < critical) return 'orange';
   return 'blinkRed';
 }
 

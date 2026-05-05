@@ -129,6 +129,70 @@ describe('loadConfig', () => {
       expect(loadConfig(dir).powerline?.style).toBe(s);
     }
   });
+
+  describe('context bar thresholds', () => {
+    beforeEach(() => { _resetMigrationFlags(); });
+
+    it('defaults to 70/85 when omitted', () => {
+      expect(loadConfig(join(dir, 'nope')).display.contextWarningThreshold).toBe(70);
+      expect(loadConfig(join(dir, 'nope')).display.contextCriticalThreshold).toBe(85);
+    });
+
+    it('accepts valid user values', () => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'config.json'), '{"display":{"contextWarningThreshold":60,"contextCriticalThreshold":80}}');
+      const c = loadConfig(dir);
+      expect(c.display.contextWarningThreshold).toBe(60);
+      expect(c.display.contextCriticalThreshold).toBe(80);
+    });
+
+    it('clamps values above 100 to 100', () => {
+      mkdirSync(dir, { recursive: true });
+      // 150 → 100, 50 → 50, but 100 >= 50 means inverted → falls back to defaults
+      writeFileSync(join(dir, 'config.json'), '{"display":{"contextWarningThreshold":50,"contextCriticalThreshold":150}}');
+      const c = loadConfig(dir);
+      expect(c.display.contextWarningThreshold).toBe(50);
+      expect(c.display.contextCriticalThreshold).toBe(100);
+    });
+
+    it('clamps negative values to 0', () => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'config.json'), '{"display":{"contextWarningThreshold":-10,"contextCriticalThreshold":50}}');
+      const c = loadConfig(dir);
+      expect(c.display.contextWarningThreshold).toBe(0);
+      expect(c.display.contextCriticalThreshold).toBe(50);
+    });
+
+    it('falls back to defaults when warning >= critical (inverted)', () => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'config.json'), '{"display":{"contextWarningThreshold":90,"contextCriticalThreshold":50}}');
+      const errSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+      const c = loadConfig(dir);
+      expect(c.display.contextWarningThreshold).toBe(70);
+      expect(c.display.contextCriticalThreshold).toBe(85);
+      expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('thresholds invalid'));
+      errSpy.mockRestore();
+    });
+
+    it('emits the inversion warn only once per process', () => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'config.json'), '{"display":{"contextWarningThreshold":90,"contextCriticalThreshold":50}}');
+      const errSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+      loadConfig(dir);
+      loadConfig(dir);
+      loadConfig(dir);
+      expect(errSpy.mock.calls.filter(c => String(c[0]).includes('thresholds invalid')).length).toBe(1);
+      errSpy.mockRestore();
+    });
+
+    it('preserves defaults when only one value is supplied and the pair is valid', () => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'config.json'), '{"display":{"contextWarningThreshold":60}}');
+      const c = loadConfig(dir);
+      expect(c.display.contextWarningThreshold).toBe(60);
+      expect(c.display.contextCriticalThreshold).toBe(85);
+    });
+  });
 });
 
 describe('mergeCliFlags', () => {

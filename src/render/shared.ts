@@ -24,6 +24,10 @@ export interface ContextBarOpts {
   plain?: boolean;
   /** Terminal width; used to pick an adaptive segment count when `segments` is not set. */
   cols?: number;
+  /** Percentage at which the bar turns orange and shows the fire icon. Default 70. */
+  warningThreshold?: number;
+  /** Percentage at which the bar turns red/blinking and shows the skull icon. Default 85. */
+  criticalThreshold?: number;
 }
 
 function adaptiveSegments(cols?: number): number {
@@ -38,9 +42,11 @@ export function buildContextBar(pct: number, c: Colors, opts?: ContextBarOpts): 
   const showHint = opts?.showHint ?? true;
   const plain = opts?.plain ?? false;
   const ic = opts?.iconSet ?? NERD_ICONS;
+  const warning = opts?.warningThreshold ?? 70;
+  const critical = opts?.criticalThreshold ?? 85;
 
   const filled = Math.round((pct / 100) * segments);
-  const colorFn = c[getContextColor(pct)];
+  const colorFn = c[getContextColor(pct, warning, critical)];
   // In plain mode the bar cells emit no ANSI — terminal default fg over
   // whatever bg the caller has set. The empty-cell `dim` is also suppressed
   // because `\x1b[2m...\x1b[0m` would still close out the caller's bg.
@@ -50,16 +56,16 @@ export function buildContextBar(pct: number, c: Colors, opts?: ContextBarOpts): 
 
   let icon = '';
   if (showIcons) {
-    if (pct >= 80) icon = c.blinkRed(ic.skull);
-    else if (pct >= 65) icon = c.orange(ic.fire);
+    if (pct >= critical) icon = c.blinkRed(ic.skull);
+    else if (pct >= warning) icon = c.orange(ic.fire);
   }
 
   // Actionable hint at high fill — nudges the user to reclaim context before
   // the session stalls. Thresholds align with the color/icon tiers above.
   let hint = '';
   if (showHint) {
-    if (pct >= 90) hint = ' ' + c.red('/compact!');
-    else if (pct >= 80) hint = ' ' + c.dim('/compact?');
+    if (pct >= critical + 5) hint = ' ' + c.red('/compact!');
+    else if (pct >= critical) hint = ' ' + c.dim('/compact?');
   }
 
   const pctStr = colorFn(`${pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%`);

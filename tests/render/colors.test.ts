@@ -62,10 +62,36 @@ describe('createColors', () => {
 });
 
 describe('getContextColor', () => {
-  it('returns green for <50%', () => { expect(getContextColor(30)).toBe('green'); });
-  it('returns yellow for 50-64%', () => { expect(getContextColor(55)).toBe('yellow'); });
-  it('returns orange for 65-79%', () => { expect(getContextColor(70)).toBe('orange'); });
-  it('returns blinkRed for >=80%', () => { expect(getContextColor(85)).toBe('blinkRed'); });
+  it('returns green for <50% with default thresholds', () => { expect(getContextColor(30)).toBe('green'); });
+  it('returns yellow for 50-69% with default thresholds', () => { expect(getContextColor(55)).toBe('yellow'); });
+  it('returns orange for 70-84% with default thresholds', () => { expect(getContextColor(70)).toBe('orange'); });
+  it('returns blinkRed for >=85% with default thresholds', () => { expect(getContextColor(85)).toBe('blinkRed'); });
+
+  describe('with custom thresholds where warning < 50', () => {
+    // warning=30, critical=60: green floor (50) is above warning, so semantics
+    // collapse to green = below warning, orange = warning..critical, red = >=critical.
+    it('returns green when below warning and below 50 floor', () => {
+      expect(getContextColor(20, 30, 60)).toBe('green');
+    });
+    it('returns orange when at or above warning but below critical', () => {
+      expect(getContextColor(40, 30, 60)).toBe('orange');
+    });
+    it('returns orange just below critical', () => {
+      expect(getContextColor(55, 30, 60)).toBe('orange');
+    });
+    it('returns blinkRed when at or above critical', () => {
+      expect(getContextColor(70, 30, 60)).toBe('blinkRed');
+    });
+  });
+
+  describe('with custom thresholds where warning > 50', () => {
+    it('returns green below 50 even with high warning threshold', () => {
+      expect(getContextColor(48, 60, 80)).toBe('green');
+    });
+    it('returns yellow between 50 and warning', () => {
+      expect(getContextColor(55, 60, 80)).toBe('yellow');
+    });
+  });
 });
 
 describe('getQuotaColor', () => {

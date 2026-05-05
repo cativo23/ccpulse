@@ -33,7 +33,13 @@ function buildSegments(ctx: RenderContext, palette: PowerlinePalette, c: Colors)
   // Context bar — always highest priority. plain=true so the bar cells inherit
   // the powerline segment bg; only %/icon/hint emit color escapes.
   if (display.contextBar) {
-    const bar = buildContextBar(input.context.usedPercentage, c, { iconSet: icons, plain: true, cols: ctx.cols });
+    const bar = buildContextBar(input.context.usedPercentage, c, {
+      iconSet: icons,
+      plain: true,
+      cols: ctx.cols,
+      warningThreshold: display.contextWarningThreshold,
+      criticalThreshold: display.contextCriticalThreshold,
+    });
     segments.push({ text: bar, bg: palette.modelBg, fg: palette.fg, priority: 100 });
   }
 
