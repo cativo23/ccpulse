@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-06
+
 ### Added
 - **Rate limits as battery glyph (#91, #92).** The bolt prefix on the 5h/7d rate-limit segment is replaced with a Nerd Font Material Design battery icon that visually fills as your quota usage climbs. Colour (yellow/orange/red via `getQuotaColor`) keeps signalling tier; the glyph now signals **level** independently (battery_50 through battery_90), with the `battery_alert` glyph reserved for the 100% ceiling. Per icon mode:
   - `nerd` — 11 Material Design glyphs across deciles, alert at 100%
   - `emoji` — 🔋 below 85%, 🪫 at/above
   - `none` — empty (icon-less mode contract preserved)
+- **Critical-tier rate-limit promotion.** When `usedPercentage >= 85%` (alert tier), the rate-limit segment now anchors right after the context bar instead of at the end of line 2. This guarantees critical quota information survives `fitSegments` eviction at narrow terminal widths — exactly when you most need to see it.
 - **Defensive guards on rate-limit gating.** Malformed payloads with `NaN`/`Infinity`/string `usedPercentage` now skip the segment instead of rendering `"NaN%(5h)"`.
 
 ### Fixed
@@ -19,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Battery glyph dispatch matches displayed `%` rounding.** `nerdBattery(99.7)` now returns `battery_alert` (matching the `"100%"` displayed by `.toFixed(0)`) instead of `battery_90`. Prevents the glyph and the number from disagreeing at fractional ceiling values.
+- **Layout-cols safety factor relaxed from 0.7 to 0.9 when stdout is non-TTY.** The historical 30% conservative reduction was overly defensive for the primary Claude Code statusline use case, where the host renders at full terminal width. New 10% headroom still hedges against host chrome (separators, gutters) without aggressively starving segments. Result: more segments fit at typical terminal widths.
 
 ## [0.7.2] - 2026-05-05
 
@@ -266,7 +270,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GSD session IDs sanitized against path traversal
 - `execFile` used instead of `exec` to prevent shell injection (except terminal width detection where shell redirect is required with procfs-sourced paths)
 
-[Unreleased]: https://github.com/cativo23/lumira/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/cativo23/lumira/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/cativo23/lumira/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/cativo23/lumira/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/cativo23/lumira/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/cativo23/lumira/compare/v0.6.2...v0.7.0
