@@ -65,9 +65,10 @@ function buildSegments(ctx: RenderContext, palette: PowerlinePalette, c: Colors)
   // Rate limits — only show if >=50%
   if (display.rateLimits && input.rateLimits) {
     const fh = input.rateLimits.fiveHour;
-    if (fh && fh.usedPercentage >= 50) {
+    // Number.isFinite guards against NaN/Infinity from malformed payloads.
+    if (fh && Number.isFinite(fh.usedPercentage) && fh.usedPercentage >= 50) {
       const bg = fh.usedPercentage >= 80 ? palette.branchDirtyBg : palette.taskBg;
-      segments.push({ text: `${icons.bolt} ${fh.usedPercentage.toFixed(0)}%(5h)`, bg, fg: palette.fg, priority: 20 });
+      segments.push({ text: `${icons.battery(fh.usedPercentage)} ${fh.usedPercentage.toFixed(0)}%(5h)`, bg, fg: palette.fg, priority: 20 });
     }
   }
 

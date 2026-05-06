@@ -89,20 +89,41 @@ export function renderLine2(ctx: RenderContext, c: Colors): string {
   leftParts.push(...formatQwenMetrics(input, c, icons));
 
   // Rate limits (only show if >=50%)
+  //
+  // Critical-tier (>=85%) segments are inserted *after the context bar* instead
+  // of appended to the end. fitSegments evicts from the rightmost left segment
+  // when terminal space is tight, so a critical 7d quota at 85% would otherwise
+  // be hidden by cache/cost segments — the exact moment the user needs to see
+  // it. Promotion only kicks in at the same threshold getQuotaColor flips to
+  // blinkRed, so colour and position escalate together.
   if (display.rateLimits && input.rateLimits) {
+    const QUOTA_CRITICAL = 85;
     const limits: [string, typeof input.rateLimits.fiveHour][] = [
       ['5h', input.rateLimits.fiveHour],
       ['7d', input.rateLimits.sevenDay],
     ];
+    // Anchor index: right after the context bar (slot 1) so promoted segments
+    // visually sit next to the bar rather than ahead of it.
+    let criticalInsertAt = display.contextBar ? 1 : 0;
     for (const [label, win] of limits) {
-      if (!win || win.usedPercentage < 50) continue;
+      // Number.isFinite catches NaN/Infinity from malformed payloads — without
+      // it, `NaN < 50` is false and the segment falls through to render
+      // "NaN%(5h)". Defend at the boundary, not inside the glyph picker.
+      if (!win || !Number.isFinite(win.usedPercentage) || win.usedPercentage < 50) continue;
       const colorFn = c[getQuotaColor(win.usedPercentage)];
-      let limitStr = colorFn(`${icons.bolt} ${win.usedPercentage.toFixed(0)}%(${label})`);
+      // Battery glyph in place of bolt — its shape mirrors usedPercentage so
+      // urgency reads from the icon alone, even before the number registers.
+      let limitStr = colorFn(`${icons.battery(win.usedPercentage)} ${win.usedPercentage.toFixed(0)}%(${label})`);
       if (win.usedPercentage >= 70 && win.resetsAt) {
         const countdown = formatCountdown(win.resetsAt);
         if (countdown) limitStr += c.dim(` ${countdown}`);
       }
-      leftParts.push(limitStr);
+      if (win.usedPercentage >= QUOTA_CRITICAL) {
+        leftParts.splice(criticalInsertAt, 0, limitStr);
+        criticalInsertAt++; // keep relative order between 5h and 7d when both critical
+      } else {
+        leftParts.push(limitStr);
+      }
     }
   }
 

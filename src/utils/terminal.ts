@@ -37,7 +37,13 @@ export function getTermCols(): number {
   return 120;
 }
 
-export function getLayoutCols(rawCols: number, isTTY: boolean, factor: number = 0.7): number {
+// When stdout isn't a TTY (the statusline case — Claude Code pipes our output)
+// we still trust the resolved rawCols since proc-tree / COLUMNS / tput give the
+// real terminal width. The small 0.9 factor leaves 10% headroom for any chrome
+// the host renderer adds (separators, gutters) without aggressively starving
+// segments. Was 0.7 historically — too conservative for CC, where the
+// statusline uses the full terminal width.
+export function getLayoutCols(rawCols: number, isTTY: boolean, factor: number = 0.9): number {
   if (isTTY) return rawCols;
   const clamped = Math.min(Math.max(factor, 0.3), 1.0);
   return Math.floor(rawCols * clamped);

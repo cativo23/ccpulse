@@ -3,7 +3,7 @@ import { renderLine2, formatCountdown } from '../../src/render/line2.js';
 import { createColors, stripAnsi } from '../../src/render/colors.js';
 import { EMPTY_GIT, EMPTY_TRANSCRIPT, DEFAULT_CONFIG, DEFAULT_DISPLAY } from '../../src/types.js';
 import type { ClaudeCodeInput, RenderContext } from '../../src/types.js';
-import { NERD_ICONS } from '../../src/render/icons.js';
+import { NERD_ICONS, EMOJI_ICONS, NO_ICONS } from '../../src/render/icons.js';
 import { normalize } from '../../src/normalize.js';
 
 const c = createColors('named');
@@ -70,6 +70,143 @@ describe('renderLine2', () => {
     const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
     expect(out).toContain('72%');
     expect(out).toContain('5h');
+  });
+
+  it('renders nerd-mode rate-limit with battery glyph for usedPercentage', () => {
+    // 78% sits in the 70-bucket → battery_70 (\u{F0080}); colored via getQuotaColor (orange tier 70-85).
+    const inputOverride = { rate_limits: { five_hour: { used_percentage: 78 } } };
+    const out = renderLine2(makeCtx({}, inputOverride), c);
+    const stripped = stripAnsi(out);
+    expect(stripped).toContain('\u{F0080}');
+    expect(stripped).toContain('78%(5h)');
+    // ANSI orange wraps the battery glyph (color is on the segment containing it).
+    expect(out).toMatch(/\x1b\[38;5;208m[^\x1b]*\u{F0080}/u);
+    // The legacy bolt should no longer prefix the rate-limit segment.
+    expect(stripped).not.toContain(`${NERD_ICONS.bolt} 78%`);
+  });
+
+  it('renders nerd-mode 50% rate-limit with the 50-bucket battery glyph', () => {
+    const inputOverride = { rate_limits: { five_hour: { used_percentage: 50 } } };
+    const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
+    expect(out).toContain('\u{F007E}');
+  });
+
+  it('renders nerd-mode 70% rate-limit with the 70-bucket battery glyph and a countdown', () => {
+    const inputOverride = {
+      rate_limits: { five_hour: { used_percentage: 70, resets_at: Math.floor(Date.now() / 1000) + 3600 } },
+    };
+    const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
+    expect(out).toContain('\u{F0080}');
+    expect(out).toMatch(/\d+h\d{2}m|\d+m\d{2}s/); // countdown still emitted at >=70%
+  });
+
+  it('renders nerd-mode 85% rate-limit with the battery_80 glyph (urgency carried by colour, not glyph)', () => {
+    const inputOverride = { rate_limits: { five_hour: { used_percentage: 85 } } };
+    const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
+    expect(out).toContain('\u{F0081}'); // battery_80 — alert reserved for 100%
+    expect(out).not.toContain('\u{F0083}');
+  });
+
+  it('renders nerd-mode 100% rate-limit with the alert glyph — quota ceiling hit', () => {
+    const inputOverride = { rate_limits: { five_hour: { used_percentage: 100 } } };
+    const out = stripAnsi(renderLine2(makeCtx({}, inputOverride), c));
+    expect(out).toContain('\u{F0083}'); // battery_alert
+  });
+
+  it('renders emoji-mode rate-limit with 🔋 below 85% and 🪫 at/above 85%', () => {
+    const below = stripAnsi(renderLine2(makeCtx(
+      { icons: EMOJI_ICONS },
+      { rate_limits: { five_hour: { used_percentage: 84 } } },
+    ), c));
+    expect(below).toContain('\u{1F50B}');
+    expect(below).not.toContain('\u{1FAAB}');
+
+    const at = stripAnsi(renderLine2(makeCtx(
+      { icons: EMOJI_ICONS },
+      { rate_limits: { five_hour: { used_percentage: 85 } } },
+    ), c));
+    expect(at).toContain('\u{1FAAB}');
+
+    const full = stripAnsi(renderLine2(makeCtx(
+      { icons: EMOJI_ICONS },
+      { rate_limits: { five_hour: { used_percentage: 100 } } },
+    ), c));
+    expect(full).toContain('\u{1FAAB}');
+
+    const mid = stripAnsi(renderLine2(makeCtx(
+      { icons: EMOJI_ICONS },
+      { rate_limits: { five_hour: { used_percentage: 50 } } },
+    ), c));
+    expect(mid).toContain('\u{1F50B}');
+  });
+
+  it('renders none-mode rate-limit with the legacy bolt fallback (unchanged)', () => {
+    const inputOverride = { rate_limits: { five_hour: { used_percentage: 78 } } };
+    const out = stripAnsi(renderLine2(makeCtx({ icons: NO_ICONS }, inputOverride), c));
+    expect(out).toContain('78%(5h)');
+    // none mode currently has bolt='' — so neither nerd nor emoji glyphs leak in.
+    expect(out).not.toContain('\u{F0080}');
+    expect(out).not.toContain('\u{1F50B}');
+    expect(out).not.toContain('\u{1FAAB}');
+  });
+
+  // Critical-tier rate-limit segments must survive fitSegments eviction. We
+  // guarantee that by promoting them next to the context bar instead of at the
+  // end of the line. The test asserts ordering: at >=85% the rate-limit token
+  // appears BEFORE the cache/cost markers; at <85% it appears AFTER.
+  it('promotes critical-tier rate-limit (>=85%) to slot right after context bar', () => {
+    const out = stripAnsi(renderLine2(makeCtx(
+      {},
+      { rate_limits: { five_hour: { used_percentage: 88 } } },
+    ), c));
+    // Find positions of the battery segment vs the cost segment.
+    const ratePos = out.indexOf('88%(5h)');
+    const costPos = out.indexOf('$');
+    expect(ratePos).toBeGreaterThan(-1);
+    expect(costPos).toBeGreaterThan(-1);
+    expect(ratePos).toBeLessThan(costPos); // critical rate beats cost
+  });
+
+  it('keeps non-critical rate-limit (<85%) at the end of the line — original order', () => {
+    const out = stripAnsi(renderLine2(makeCtx(
+      {},
+      { rate_limits: { five_hour: { used_percentage: 78 } } },
+    ), c));
+    const ratePos = out.indexOf('78%(5h)');
+    const costPos = out.indexOf('$');
+    expect(ratePos).toBeGreaterThan(costPos); // non-critical sits after cost
+  });
+
+  it('promotes only the critical window when criticality is mixed (5h non-critical, 7d critical)', () => {
+    const out = stripAnsi(renderLine2(makeCtx(
+      {},
+      { rate_limits: {
+        five_hour: { used_percentage: 60 },   // non-critical → end of line
+        seven_day: { used_percentage: 92 },   // critical → promoted to slot 1
+      } },
+    ), c));
+    const fhPos = out.indexOf('60%(5h)');
+    const sdPos = out.indexOf('92%(7d)');
+    const costPos = out.indexOf('$');
+    expect(sdPos).toBeGreaterThan(-1);
+    expect(fhPos).toBeGreaterThan(-1);
+    expect(sdPos).toBeLessThan(costPos);  // 7d (critical) before cost
+    expect(fhPos).toBeGreaterThan(costPos); // 5h (non-critical) after cost
+  });
+
+  it('keeps relative 5h-then-7d order when both are critical', () => {
+    const out = stripAnsi(renderLine2(makeCtx(
+      {},
+      { rate_limits: {
+        five_hour: { used_percentage: 91 },
+        seven_day: { used_percentage: 87 },
+      } },
+    ), c));
+    const fhPos = out.indexOf('91%(5h)');
+    const sdPos = out.indexOf('87%(7d)');
+    expect(fhPos).toBeGreaterThan(-1);
+    expect(sdPos).toBeGreaterThan(-1);
+    expect(fhPos).toBeLessThan(sdPos);
   });
 
   it('shows vim mode', () => {

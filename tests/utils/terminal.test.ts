@@ -11,7 +11,9 @@ describe('getTermCols', () => {
 
 describe('getLayoutCols', () => {
   it('returns raw cols when TTY', () => { expect(getLayoutCols(120, true)).toBe(120); });
-  it('applies 0.7 reduction when not TTY', () => { expect(getLayoutCols(120, false)).toBe(84); });
+  it('applies default 0.9 reduction when not TTY (10% headroom for host chrome)', () => {
+    expect(getLayoutCols(120, false)).toBe(108);
+  });
   it('applies custom reduction factor', () => { expect(getLayoutCols(100, false, 0.5)).toBe(50); });
   it('clamps factor between 0.3 and 1.0', () => {
     expect(getLayoutCols(100, false, 0.1)).toBe(30);

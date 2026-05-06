@@ -6,6 +6,12 @@ export function displayWidth(str: string): number {
   for (const ch of clean) {
     const cp = ch.codePointAt(0)!;
     if ((cp >= 0xFE00 && cp <= 0xFE0F) || cp === 0x200D || (cp >= 0x0300 && cp <= 0x036F)) continue;
+    // Nerd Font Supplementary Private Use Area-A glyphs (Material Design,
+    // codicons, etc., U+F0000–U+FFFFF) render as single cells on patched
+    // fonts — same as the BMP PUA Nerd glyphs that fall through to width 1
+    // below. Without this exclusion the catch-all `>= 0x1F000` would treat
+    // them as 2 cells and break `fitSegments` layout calculations.
+    if (cp >= 0xF0000 && cp <= 0xFFFFF) { w += 1; continue; }
     if (cp >= 0x1F000 || (cp >= 0x2300 && cp <= 0x257F) || (cp >= 0x25A0 && cp <= 0x25FF) ||
         (cp >= 0x2600 && cp <= 0x27BF) || (cp >= 0x2B00 && cp <= 0x2BFF) ||
         (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0x3000 && cp <= 0x303F) || (cp >= 0xFF00 && cp <= 0xFFEF)) {

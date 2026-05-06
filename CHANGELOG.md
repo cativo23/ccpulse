@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Rate limits as battery glyph (#91, #92).** The bolt prefix on the 5h/7d rate-limit segment is replaced with a Nerd Font Material Design battery icon that visually fills as your quota usage climbs. Colour (yellow/orange/red via `getQuotaColor`) keeps signalling tier; the glyph now signals **level** independently (battery_50 through battery_90), with the `battery_alert` glyph reserved for the 100% ceiling. Per icon mode:
+  - `nerd` — 11 Material Design glyphs across deciles, alert at 100%
+  - `emoji` — 🔋 below 85%, 🪫 at/above
+  - `none` — empty (icon-less mode contract preserved)
+- **Defensive guards on rate-limit gating.** Malformed payloads with `NaN`/`Infinity`/string `usedPercentage` now skip the segment instead of rendering `"NaN%(5h)"`.
+
+### Fixed
+- **`displayWidth` undercount for Nerd Font Supplementary PUA-A glyphs.** Material Design Nerd Font icons (U+F0000–U+FFFFF) were counted as 2 cells by the catch-all `>= 0x1F000` rule, but render as 1 cell on patched fonts — matching how the existing BMP-PUA Nerd glyphs are already counted. Fixes `fitSegments` over-reserving width and dropping right-side segments earlier than necessary on tight terminals.
+
+### Changed
+- **Battery glyph dispatch matches displayed `%` rounding.** `nerdBattery(99.7)` now returns `battery_alert` (matching the `"100%"` displayed by `.toFixed(0)`) instead of `battery_90`. Prevents the glyph and the number from disagreeing at fractional ceiling values.
+
 ## [0.7.2] - 2026-05-05
 
 ### Added
